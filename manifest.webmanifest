@@ -1,0 +1,18 @@
+{
+  "name": "Rookie Vault",
+  "short_name": "Rookie Vault",
+  "description": "A private family sports card collection.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f2ed",
+  "theme_color": "#541923",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
