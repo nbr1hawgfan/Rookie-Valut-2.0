@@ -1,6 +1,6 @@
-# Rookie Vault Photo Upgrade
+# Step 2 — Collection Page
 
-Replace these four files in GitHub:
+Replace these files in the repository:
 
 - `index.html`
 - `css/app.css`
@@ -9,6 +9,12 @@ Replace these four files in GitHub:
 
 Do not replace or delete `js/config.js`.
 
-The private `card-photos` bucket and policies must already exist in Supabase.
+This update adds:
 
-After GitHub Pages finishes deploying, close and reopen the installed PWA or hard-refresh the browser. The service worker cache version is now `rookie-vault-v2`.
+- Search across player, year, brand, set, card number, location and notes
+- Sport filter chips
+- Status filter chips
+- Result count
+- Sport and status badges on each card
+- Cleaner responsive collection layout
+- PWA cache version `rookie-vault-v3`
