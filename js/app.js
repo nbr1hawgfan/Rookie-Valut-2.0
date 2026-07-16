@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createWorker } from "https://esm.sh/tesseract.js@7.0.0";
 
 const PHOTO_BUCKET = "card-photos";
 const MAX_IMAGE_EDGE = 1800;
@@ -15,6 +16,35 @@ const elements = {
   addView: document.querySelector("#addView"),
   collectionView: document.querySelector("#collectionView"),
   tradeView: document.querySelector("#tradeView"),
+  scanView: document.querySelector("#scanView"),
+  scanFrontInput: document.querySelector("#scanFrontInput"),
+  scanBackInput: document.querySelector("#scanBackInput"),
+  scanFrontPreview: document.querySelector("#scanFrontPreview"),
+  scanBackPreview: document.querySelector("#scanBackPreview"),
+  analyzeCardButton: document.querySelector("#analyzeCardButton"),
+  resetScanButton: document.querySelector("#resetScanButton"),
+  scanProgressWrap: document.querySelector("#scanProgressWrap"),
+  scanProgressBar: document.querySelector("#scanProgressBar"),
+  scanProgressText: document.querySelector("#scanProgressText"),
+  scanPlaceholder: document.querySelector("#scanPlaceholder"),
+  scanResults: document.querySelector("#scanResults"),
+  scanConfidenceBadge: document.querySelector("#scanConfidenceBadge"),
+  scanPlayerSuggestion: document.querySelector("#scanPlayerSuggestion"),
+  scanYearSuggestion: document.querySelector("#scanYearSuggestion"),
+  scanBrandSuggestion: document.querySelector("#scanBrandSuggestion"),
+  scanSetSuggestion: document.querySelector("#scanSetSuggestion"),
+  scanNumberSuggestion: document.querySelector("#scanNumberSuggestion"),
+  scanSportSuggestion: document.querySelector("#scanSportSuggestion"),
+  scanParallelSuggestion: document.querySelector("#scanParallelSuggestion"),
+  scanRookieSuggestion: document.querySelector("#scanRookieSuggestion"),
+  duplicateWarning: document.querySelector("#duplicateWarning"),
+  duplicateWarningText: document.querySelector("#duplicateWarningText"),
+  increaseDuplicateButton: document.querySelector("#increaseDuplicateButton"),
+  useScanSuggestionsButton: document.querySelector("#useScanSuggestionsButton"),
+  scanPricingSearchButton: document.querySelector("#scanPricingSearchButton"),
+  scanFrontText: document.querySelector("#scanFrontText"),
+  scanBackText: document.querySelector("#scanBackText"),
+  scanMessage: document.querySelector("#scanMessage"),
   homeAddButton: document.querySelector("#homeAddButton"),
   viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
   recentCardsGrid: document.querySelector("#recentCardsGrid"),
@@ -150,6 +180,9 @@ let collectionView = "active";
 let activeAppView = "home";
 let myTradeCardIds = new Set();
 let otherTradeItems = [];
+let scanPreviewUrls = [];
+let scanDuplicateCard = null;
+let scanOcrWorker = null;
 
 applyInitialTheme();
 init();
@@ -199,6 +232,13 @@ function bindEvents() {
   elements.clearTradeButton.addEventListener("click", clearTrade);
   elements.tradeSearchInput.addEventListener("input", renderTradeBuilder);
   elements.otherTradeForm.addEventListener("submit", addOtherTradeItem);
+  elements.scanFrontInput.addEventListener("change", () => previewScanPhoto(elements.scanFrontInput, elements.scanFrontPreview));
+  elements.scanBackInput.addEventListener("change", () => previewScanPhoto(elements.scanBackInput, elements.scanBackPreview));
+  elements.analyzeCardButton.addEventListener("click", analyzeScannedCard);
+  elements.resetScanButton.addEventListener("click", resetScanAssistant);
+  elements.useScanSuggestionsButton.addEventListener("click", applyScanSuggestions);
+  elements.scanPricingSearchButton.addEventListener("click", openScanPricingSearch);
+  elements.increaseDuplicateButton.addEventListener("click", increaseDuplicateQuantity);
   updateLastBackupDisplay();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
@@ -606,6 +646,105 @@ function previewSelectedPhoto(input, imageElement) {
 
 
 
+
+
+function previewScanPhoto(input, preview) {
+  const file = input.files?.[0];
+  if (!file) { preview.removeAttribute("src"); preview.classList.add("hidden"); return; }
+  if (!file.type.startsWith("image/")) { input.value=""; elements.scanMessage.textContent="Please choose an image file."; return; }
+  const url=URL.createObjectURL(file); scanPreviewUrls.push(url); preview.src=url; preview.classList.remove("hidden");
+}
+
+async function analyzeScannedCard() {
+  const front=elements.scanFrontInput.files?.[0], back=elements.scanBackInput.files?.[0];
+  if (!front && !back) { elements.scanMessage.textContent="Add at least one card photo."; return; }
+  elements.analyzeCardButton.disabled=true; elements.analyzeCardButton.textContent="Analyzing...";
+  elements.scanProgressWrap.classList.remove("hidden"); elements.scanResults.classList.add("hidden"); elements.scanPlaceholder.classList.add("hidden");
+  setScanProgress(2,"Loading text-recognition engine...");
+  try {
+    scanOcrWorker=await createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text")setScanProgress(15+Math.round((m.progress||0)*70),`Reading card text... ${Math.round((m.progress||0)*100)}%`)}});
+    let frontText="",backText="";
+    if(front){setScanProgress(10,"Preparing front photo...");frontText=(await scanOcrWorker.recognize(await prepareOcrImage(front))).data.text||""}
+    if(back){setScanProgress(front?55:10,"Preparing back photo...");backText=(await scanOcrWorker.recognize(await prepareOcrImage(back))).data.text||""}
+    setScanProgress(94,"Building suggestions...");
+    populateScanSuggestions(parseCardText(frontText,backText),frontText,backText);
+    setScanProgress(100,"Analysis complete."); setTimeout(()=>elements.scanProgressWrap.classList.add("hidden"),700);
+  } catch(error) {
+    console.error("Scan failed:",error); elements.scanMessage.textContent="Scan failed. Try a closer photo with less glare.";
+    elements.scanPlaceholder.classList.remove("hidden"); elements.scanProgressWrap.classList.add("hidden");
+  } finally {
+    if(scanOcrWorker){await scanOcrWorker.terminate().catch(()=>{});scanOcrWorker=null}
+    elements.analyzeCardButton.disabled=false;elements.analyzeCardButton.textContent="Analyze card";
+  }
+}
+
+async function prepareOcrImage(file) {
+  const bitmap=await createImageBitmap(file),max=1800,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement("canvas");canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);
+  const ctx=canvas.getContext("2d",{alpha:false});ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.filter="grayscale(1) contrast(1.35)";ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();return canvas;
+}
+
+function parseCardText(frontText,backText) {
+  const text=`${frontText}\n${backText}`.replace(/\r/g,"\n"), upper=text.toUpperCase();
+  const lines=text.split("\n").map(x=>x.replace(/\s+/g," ").trim()).filter(x=>x.length>=2);
+  const years=[...text.matchAll(/\b(19[5-9]\d|20[0-3]\d)\b/g)].map(m=>+m[1]).filter(y=>y<=new Date().getFullYear()+1);
+  const year=years.length?Math.max(...years):"";
+  const find=(pairs)=>pairs.find(([,r])=>r.test(text))?.[0]||"";
+  const brand=find([["Topps",/\bTOPPS\b/i],["Panini",/\bPANINI\b/i],["Upper Deck",/\bUPPER\s+DECK\b/i],["Bowman",/\bBOWMAN\b/i],["Donruss",/\bDONRUSS\b/i],["Fleer",/\bFLEER\b/i],["Leaf",/\bLEAF\b/i]]);
+  const setName=find([["Chrome",/\bCHROME\b/i],["Prizm",/\bPRIZM\b/i],["Mosaic",/\bMOSAIC\b/i],["Select",/\bSELECT\b/i],["Heritage",/\bHERITAGE\b/i],["Optic",/\bOPTIC\b/i],["Stadium Club",/\bSTADIUM\s+CLUB\b/i],["Series 1",/\bSERIES\s+1\b/i],["Series 2",/\bSERIES\s+2\b/i]]);
+  const num=(text.match(/(?:CARD\s*(?:NO|NUMBER|#)?\.?\s*|NO\.?\s*|#\s*)([A-Z]{0,4}-?\d{1,4})\b/i)||[])[1]||"";
+  const parallel=find([["Silver",/\bSILVER\b/i],["Gold",/\bGOLD\b/i],["Refractor",/\bREFRACTOR\b/i],["Holo",/\bHOLO\b/i],["Blue",/\bBLUE\b/i],["Red",/\bRED\b/i],["Green",/\bGREEN\b/i],["Purple",/\bPURPLE\b/i]]);
+  const sport=detectSport(upper), rookie=/\b(RC|ROOKIE)\b/i.test(text);
+  const reject=/TOPPS|PANINI|BOWMAN|CHROME|PRIZM|MOSAIC|SELECT|BASEBALL|BASKETBALL|FOOTBALL|HOCKEY|SOCCER|ROOKIE|CARD|COPYRIGHT|AUTHENTIC/i;
+  const candidates=lines.filter(x=>/^[A-Za-z][A-Za-z .'-]{4,35}$/.test(x)&&!reject.test(x)&&!/\b(19|20)\d{2}\b/.test(x))
+    .map(x=>({x,s:(x.split(" ").length>=2&&x.split(" ").length<=4?3:0)+(frontText.toUpperCase().includes(x.toUpperCase())?2:0)+(x===x.toUpperCase()?1:0)})).sort((a,b)=>b.s-a.s);
+  const player=(candidates[0]?.x||"").toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+  const points=(player?3:0)+(year?2:0)+(brand?2:0)+(setName?1:0)+(num?2:0);
+  return {player,year,brand,setName,cardNumber:num,sport,parallel,rookie,confidence:points>=8?"High confidence":points>=5?"Medium confidence":"Low confidence"};
+}
+
+function detectSport(t) {
+  if(/BASEBALL|MLB|PITCHER|BATTING/.test(t))return"Baseball";
+  if(/BASKETBALL|NBA|REBOUNDS|GUARD/.test(t))return"Basketball";
+  if(/FOOTBALL|NFL|QUARTERBACK|TOUCHDOWN/.test(t))return"Football";
+  if(/HOCKEY|NHL|GOALTENDER/.test(t))return"Hockey";
+  if(/SOCCER|FIFA|MIDFIELDER|STRIKER/.test(t))return"Soccer";
+  return"Other";
+}
+
+function populateScanSuggestions(s,frontText,backText) {
+  elements.scanPlayerSuggestion.value=s.player;elements.scanYearSuggestion.value=s.year;elements.scanBrandSuggestion.value=s.brand;elements.scanSetSuggestion.value=s.setName;
+  elements.scanNumberSuggestion.value=s.cardNumber;elements.scanSportSuggestion.value=s.sport;elements.scanParallelSuggestion.value=s.parallel;elements.scanRookieSuggestion.checked=s.rookie;
+  elements.scanFrontText.textContent=frontText.trim()||"No front text read.";elements.scanBackText.textContent=backText.trim()||"No back text read.";elements.scanConfidenceBadge.textContent=s.confidence;
+  scanDuplicateCard=findPossibleDuplicate(s);updateDuplicateWarning();elements.scanResults.classList.remove("hidden");elements.scanPlaceholder.classList.add("hidden");
+}
+
+function findPossibleDuplicate(s) {
+  const p=normalizeMatchText(s.player),n=normalizeMatchText(s.cardNumber),y=String(s.year||"");if(!p)return null;
+  return cards.find(c=>!c.deleted_at&&normalizeMatchText(c.player_name)===p&&(!y||String(c.card_year||"")===y)&&(!n||normalizeMatchText(c.card_number)===n))||null;
+}
+function normalizeMatchText(v){return String(v||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function updateDuplicateWarning(){elements.duplicateWarning.classList.toggle("hidden",!scanDuplicateCard);if(scanDuplicateCard)elements.duplicateWarningText.textContent=`${scanDuplicateCard.player_name} is already saved with quantity ${scanDuplicateCard.quantity||1}${scanDuplicateCard.storage_location?` in ${scanDuplicateCard.storage_location}`:""}.`}
+
+async function increaseDuplicateQuantity() {
+  if(!scanDuplicateCard)return;const quantity=Math.max(1,+scanDuplicateCard.quantity||1)+1;
+  const {data,error}=await supabase.from("cards").update({quantity}).eq("id",scanDuplicateCard.id).eq("collection_id",currentCollectionId).select("*").single();
+  if(error){elements.scanMessage.textContent="Could not increase quantity.";return}
+  const i=cards.findIndex(c=>c.id===data.id);cards[i]={...data,front_photo_url:scanDuplicateCard.front_photo_url,back_photo_url:scanDuplicateCard.back_photo_url};scanDuplicateCard=cards[i];updateDuplicateWarning();renderCards();elements.scanMessage.textContent=`Quantity increased to ${quantity}.`;
+}
+
+function applyScanSuggestions() {
+  document.querySelector("#playerInput").value=elements.scanPlayerSuggestion.value.trim();document.querySelector("#yearInput").value=elements.scanYearSuggestion.value.trim();
+  document.querySelector("#brandInput").value=elements.scanBrandSuggestion.value.trim();document.querySelector("#setInput").value=elements.scanSetSuggestion.value.trim();
+  document.querySelector("#cardNumberInput").value=elements.scanNumberSuggestion.value.trim();document.querySelector("#sportInput").value=elements.scanSportSuggestion.value;
+  elements.parallelInput.value=elements.scanParallelSuggestion.value.trim();elements.rookieInput.checked=elements.scanRookieSuggestion.checked;
+  transferScanFile(elements.scanFrontInput,elements.frontPhotoInput,elements.frontPreview);transferScanFile(elements.scanBackInput,elements.backPhotoInput,elements.backPreview);
+  navigateTo("add");setCardMessage("Scan suggestions applied. Review every field before saving.");
+}
+function transferScanFile(source,target,preview){const file=source.files?.[0];if(!file)return;const dt=new DataTransfer();dt.items.add(file);target.files=dt.files;previewSelectedPhoto(target,preview)}
+function openScanPricingSearch(){const q=[elements.scanYearSuggestion.value,elements.scanBrandSuggestion.value,elements.scanSetSuggestion.value,elements.scanPlayerSuggestion.value,elements.scanNumberSuggestion.value?`#${elements.scanNumberSuggestion.value}`:"",elements.scanParallelSuggestion.value,elements.scanRookieSuggestion.checked?"rookie RC":""].filter(Boolean).join(" ");if(!q){elements.scanMessage.textContent="Not enough details to search.";return}window.open(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Complete=1&LH_Sold=1`,"_blank","noopener,noreferrer")}
+function resetScanAssistant(){elements.scanFrontInput.value="";elements.scanBackInput.value="";scanPreviewUrls.forEach(URL.revokeObjectURL);scanPreviewUrls=[];[elements.scanFrontPreview,elements.scanBackPreview].forEach(p=>{p.removeAttribute("src");p.classList.add("hidden")});[elements.scanPlayerSuggestion,elements.scanYearSuggestion,elements.scanBrandSuggestion,elements.scanSetSuggestion,elements.scanNumberSuggestion,elements.scanParallelSuggestion].forEach(i=>i.value="");elements.scanSportSuggestion.value="Other";elements.scanRookieSuggestion.checked=false;elements.scanResults.classList.add("hidden");elements.scanPlaceholder.classList.remove("hidden");elements.scanProgressWrap.classList.add("hidden");elements.scanMessage.textContent="";scanDuplicateCard=null;updateDuplicateWarning()}
+function setScanProgress(p,m){elements.scanProgressBar.style.width=`${Math.max(0,Math.min(100,p))}%`;elements.scanProgressText.textContent=m}
 
 function renderTradeBuilder() {
   const activeCards = cards.filter(card => !card.deleted_at);
@@ -1125,11 +1264,13 @@ function navigateTo(view) {
   const showAdd = view === "add";
   const showCollection = view === "collection" || view === "trash";
   const showTrade = view === "trade";
+  const showScan = view === "scan";
 
   elements.homeView.classList.toggle("hidden", !showHome);
   elements.addView.classList.toggle("hidden", !showAdd);
   elements.collectionView.classList.toggle("hidden", !showCollection);
   elements.tradeView.classList.toggle("hidden", !showTrade);
+  elements.scanView.classList.toggle("hidden", !showScan);
 
   for (const button of document.querySelectorAll(".nav-button")) {
     button.classList.toggle("active", button.dataset.view === view);

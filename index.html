@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=12">
+  <link rel="stylesheet" href="./css/app.css?v=13">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -384,6 +384,88 @@
       </section>
 
 
+
+      <section id="scanView" class="app-view hidden">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Vault Vision</p>
+              <h2>Scan Assistant</h2>
+              <p class="muted">Photograph the front and back, then review Rookie Vault's suggestions.</p>
+            </div>
+            <button id="resetScanButton" class="button button-secondary" type="button">Start over</button>
+          </div>
+
+          <div class="scan-layout">
+            <section class="scan-box">
+              <div class="scan-photo-grid">
+                <label class="scan-picker">Front photo
+                  <input id="scanFrontInput" type="file" accept="image/*" capture="environment">
+                  <span class="scan-photo-action">Take or choose front</span>
+                  <img id="scanFrontPreview" class="scan-preview hidden" alt="Front scan preview">
+                </label>
+                <label class="scan-picker">Back photo
+                  <input id="scanBackInput" type="file" accept="image/*" capture="environment">
+                  <span class="scan-photo-action">Take or choose back</span>
+                  <img id="scanBackPreview" class="scan-preview hidden" alt="Back scan preview">
+                </label>
+              </div>
+              <button id="analyzeCardButton" class="button scan-main-button" type="button">Analyze card</button>
+              <div id="scanProgressWrap" class="hidden">
+                <div class="scan-progress-track"><div id="scanProgressBar" class="scan-progress-bar"></div></div>
+                <p id="scanProgressText" class="muted">Preparing OCR...</p>
+              </div>
+              <p class="scan-note">OCR runs in the browser. Photos are not saved until the reviewed card is saved.</p>
+            </section>
+
+            <section class="scan-box">
+              <div id="scanPlaceholder" class="scan-placeholder">
+                <strong>Ready to scan</strong>
+                <p>A straight, glare-free photo works best. The back often has the clearest card number.</p>
+              </div>
+
+              <div id="scanResults" class="hidden">
+                <div class="scan-result-heading">
+                  <div><p class="eyebrow accent-text">Suggested details</p><h3>Review before using</h3></div>
+                  <span id="scanConfidenceBadge" class="research-date">Low confidence</span>
+                </div>
+
+                <div class="scan-suggestion-grid">
+                  <label>Player<input id="scanPlayerSuggestion" maxlength="120"></label>
+                  <label>Year<input id="scanYearSuggestion" maxlength="4" inputmode="numeric"></label>
+                  <label>Brand<input id="scanBrandSuggestion" maxlength="100"></label>
+                  <label>Set<input id="scanSetSuggestion" maxlength="120"></label>
+                  <label>Card number<input id="scanNumberSuggestion" maxlength="40"></label>
+                  <label>Sport<select id="scanSportSuggestion"><option>Baseball</option><option>Basketball</option><option>Football</option><option>Hockey</option><option>Soccer</option><option>Other</option></select></label>
+                  <label>Parallel / variation<input id="scanParallelSuggestion" maxlength="120"></label>
+                  <label class="scan-check"><input id="scanRookieSuggestion" type="checkbox"><span>Possible rookie card</span></label>
+                </div>
+
+                <div id="duplicateWarning" class="duplicate-warning hidden">
+                  <strong>Possible duplicate found</strong>
+                  <p id="duplicateWarningText"></p>
+                  <button id="increaseDuplicateButton" class="button button-secondary" type="button">Increase existing quantity</button>
+                </div>
+
+                <div class="scan-actions">
+                  <button id="useScanSuggestionsButton" class="button" type="button">Use these details</button>
+                  <button id="scanPricingSearchButton" class="button button-secondary" type="button">Search sold listings</button>
+                </div>
+
+                <details class="ocr-details">
+                  <summary>View text read from card</summary>
+                  <div class="ocr-text-grid">
+                    <section><h4>Front</h4><pre id="scanFrontText"></pre></section>
+                    <section><h4>Back</h4><pre id="scanBackText"></pre></section>
+                  </div>
+                </details>
+              </div>
+            </section>
+          </div>
+          <p id="scanMessage" class="message" aria-live="polite"></p>
+        </section>
+      </section>
+
       <section id="tradeView" class="app-view hidden">
         <section class="panel">
           <div class="section-heading">
@@ -476,9 +558,9 @@
           <span class="nav-icon" aria-hidden="true">▦</span>
           <span>Collection</span>
         </button>
-        <button class="nav-button nav-button-primary" type="button" data-view="add">
-          <span class="nav-icon" aria-hidden="true">＋</span>
-          <span>Add</span>
+        <button class="nav-button nav-button-primary" type="button" data-view="scan">
+          <span class="nav-icon" aria-hidden="true">⌾</span>
+          <span>Scan</span>
         </button>
         <button class="nav-button" type="button" data-view="trade">
           <span class="nav-icon" aria-hidden="true">⇄</span>
@@ -626,6 +708,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=12"></script>
+  <script type="module" src="./js/app.js?v=13"></script>
 </body>
 </html>
