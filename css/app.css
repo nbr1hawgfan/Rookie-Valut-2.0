@@ -1715,3 +1715,13 @@ body.show-mode-active {
     font-size: 1.4rem;
   }
 }
+
+/* CardSight integration — v17 */
+.cardsight-panel{margin-top:1rem;padding:1rem;border:1px solid color-mix(in srgb,var(--accent) 48%,var(--border));border-radius:16px;background:radial-gradient(circle at right top,color-mix(in srgb,var(--accent) 14%,transparent),transparent 18rem),var(--surface-2)}
+.cardsight-heading{display:flex;justify-content:space-between;align-items:start;gap:.8rem}.cardsight-heading h3{margin-bottom:.3rem}
+.cardsight-settings{margin-top:.8rem;padding:.75rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.cardsight-settings summary{color:var(--muted);font-weight:850;cursor:pointer}
+.cardsight-key-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:.65rem;align-items:end;margin-top:.75rem}.cardsight-key-note{margin:.65rem 0 0;font-size:.78rem}
+.cardsight-actions{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.65rem;margin-top:1rem}.cardsight-search-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.55rem}
+.cardsight-results{display:grid;gap:.65rem;margin-top:.8rem}.cardsight-result{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.75rem;align-items:center;padding:.8rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.cardsight-result strong{display:block}.cardsight-result span{display:block;margin-top:.25rem;color:var(--muted);font-size:.82rem}.cardsight-result button{min-width:88px}
+@media(max-width:760px){.cardsight-heading{align-items:stretch;flex-direction:column}.cardsight-key-row,.cardsight-actions,.cardsight-search-box,.cardsight-result{grid-template-columns:1fr}.cardsight-result button,.cardsight-actions>.button{width:100%}}

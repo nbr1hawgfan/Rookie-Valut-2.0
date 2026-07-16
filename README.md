@@ -1,39 +1,33 @@
-# Rookie Vault Card Show Mode + Wishlist Upgrade
+# Rookie Vault CardSight Integration v1
 
-## First: run the migration
+No Supabase migration is required.
 
-Run:
-
-- `supabase/wishlist-enhancements-migration.sql`
-
-in Supabase SQL Editor.
-
-## Then replace
-
+Replace:
 - `index.html`
 - `css/app.css`
 - `js/app.js`
 - `sw.js`
 
-Keep:
+Keep `js/config.js`.
 
-- `js/config.js`
+## Setup
+1. Open Scan.
+2. Expand CardSight API settings.
+3. Paste the CardSight API key.
+4. Save it.
+
+The key stays in localStorage on that browser/device. It is not committed to GitHub or stored in Supabase.
 
 ## Adds
+- CardSight photo identification
+- Baseball, football, basketball, and hockey fallback
+- Structured CardSight catalog search
+- Full catalog-card lookup
+- Populates player, year, manufacturer, set, number, parallel, sport, rookie suggestion
+- Recent completed-sales estimate
+- Suggested value transfers into Add Card
+- OCR remains the free local first pass
+- Duplicate detection runs after CardSight matches
+- PWA cache v17
 
-- Card Show Mode button on Home
-- Full-screen show-floor interface
-- Fast Trade, Duplicate, Wishlist, High Value, and All filters
-- Large mobile-first card photos
-- Fast search
-- Wishlist priority: Low, Medium, High
-- Wishlist target price
-- Wishlist priority and target shown in card details
-- Wishlist fields included in CSV/JSON backups
-- PWA cache version `rookie-vault-v16`
-
-High-value currently means an estimated value of $50 or more.
-
-Suggested commit:
-
-`Add card show mode and wishlist priorities`
+Suggested commit: `Merge CardSight identification catalog and pricing`

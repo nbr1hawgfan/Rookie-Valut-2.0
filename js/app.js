@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createWorker } from "https://esm.sh/tesseract.js@7.0.0";
+import * as CardSightSdk from "https://esm.sh/cardsightai@3.6.0";
 
 const PHOTO_BUCKET = "card-photos";
 const MAX_IMAGE_EDGE = 1800;
@@ -7,6 +8,7 @@ const JPEG_QUALITY = 0.82;
 const SIGNED_URL_SECONDS = 3600;
 const THEME_KEY = "rookie-vault-theme";
 const LAST_BACKUP_KEY = "rookie-vault-last-backup";
+const CARDSIGHT_KEY_STORAGE = "rookie-vault-cardsight-api-key";
 
 const elements = {
   setupPanel: document.querySelector("#setupPanel"),
@@ -36,6 +38,7 @@ const elements = {
   scanNumberSuggestion: document.querySelector("#scanNumberSuggestion"),
   scanSportSuggestion: document.querySelector("#scanSportSuggestion"),
   scanParallelSuggestion: document.querySelector("#scanParallelSuggestion"),
+  scanValueSuggestion: document.querySelector("#scanValueSuggestion"),
   scanRookieSuggestion: document.querySelector("#scanRookieSuggestion"),
   duplicateWarning: document.querySelector("#duplicateWarning"),
   duplicateWarningText: document.querySelector("#duplicateWarningText"),
@@ -45,6 +48,16 @@ const elements = {
   scanFrontText: document.querySelector("#scanFrontText"),
   scanBackText: document.querySelector("#scanBackText"),
   scanMessage: document.querySelector("#scanMessage"),
+  cardSightStatusBadge: document.querySelector("#cardSightStatusBadge"),
+  cardSightSettings: document.querySelector("#cardSightSettings"),
+  cardSightApiKeyInput: document.querySelector("#cardSightApiKeyInput"),
+  saveCardSightKeyButton: document.querySelector("#saveCardSightKeyButton"),
+  clearCardSightKeyButton: document.querySelector("#clearCardSightKeyButton"),
+  identifyWithCardSightButton: document.querySelector("#identifyWithCardSightButton"),
+  cardSightSearchInput: document.querySelector("#cardSightSearchInput"),
+  searchCardSightButton: document.querySelector("#searchCardSightButton"),
+  cardSightMessage: document.querySelector("#cardSightMessage"),
+  cardSightResults: document.querySelector("#cardSightResults"),
   homeAddButton: document.querySelector("#homeAddButton"),
   homeSetsButton: document.querySelector("#homeSetsButton"),
   homeShowButton: document.querySelector("#homeShowButton"),
@@ -237,6 +250,7 @@ let setGoals = [];
 let selectedSetGoal = null;
 let selectedMissingNumber = null;
 let activeShowFilter = "trade";
+let selectedCardSightCard = null;
 
 applyInitialTheme();
 init();
@@ -296,6 +310,16 @@ function bindEvents() {
   elements.useScanSuggestionsButton.addEventListener("click", applyScanSuggestions);
   elements.scanPricingSearchButton.addEventListener("click", openScanPricingSearch);
   elements.increaseDuplicateButton.addEventListener("click", increaseDuplicateQuantity);
+  elements.saveCardSightKeyButton.addEventListener("click", saveCardSightKey);
+  elements.clearCardSightKeyButton.addEventListener("click", clearCardSightKey);
+  elements.identifyWithCardSightButton.addEventListener("click", identifyWithCardSight);
+  elements.searchCardSightButton.addEventListener("click", () => searchCardSightCatalog(elements.cardSightSearchInput.value));
+  elements.cardSightSearchInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchCardSightCatalog(elements.cardSightSearchInput.value);
+    }
+  });
   elements.newSetGoalButton.addEventListener("click", () => openSetGoalForm());
   elements.cancelSetGoalButton.addEventListener("click", closeSetGoalForm);
   elements.setGoalForm.addEventListener("submit", saveSetGoal);
@@ -317,6 +341,7 @@ function bindEvents() {
   });
   updateLastBackupDisplay();
   updateWishlistFields();
+  updateCardSightStatus();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -1225,6 +1250,106 @@ function addSelectedMissingCard() {
   );
 }
 
+
+function getCardSightApiKey(){return localStorage.getItem(CARDSIGHT_KEY_STORAGE)||""}
+function createCardSightClient(){const apiKey=getCardSightApiKey();if(!apiKey)throw new Error("Add a CardSight API key first.");return new CardSightSdk.CardSightAI({apiKey})}
+function updateCardSightStatus(){const key=getCardSightApiKey();elements.cardSightStatusBadge.textContent=key?"API key saved":"API key not set";elements.cardSightApiKeyInput.value=key}
+function saveCardSightKey(){const key=elements.cardSightApiKeyInput.value.trim();if(!key){elements.cardSightMessage.textContent="Paste an API key first.";return}localStorage.setItem(CARDSIGHT_KEY_STORAGE,key);updateCardSightStatus();elements.cardSightSettings.open=false;elements.cardSightMessage.textContent="CardSight key saved on this device."}
+function clearCardSightKey(){localStorage.removeItem(CARDSIGHT_KEY_STORAGE);elements.cardSightApiKeyInput.value="";elements.cardSightResults.replaceChildren();selectedCardSightCard=null;updateCardSightStatus();elements.cardSightMessage.textContent="CardSight key removed."}
+function requireCardSightKey(){if(getCardSightApiKey())return true;elements.cardSightSettings.open=true;elements.cardSightMessage.textContent="Add a CardSight API key first.";elements.cardSightApiKeyInput.focus();return false}
+
+async function identifyWithCardSight(){
+  if(!requireCardSightKey())return;
+  const front=elements.scanFrontInput.files?.[0];
+  if(!front){elements.cardSightMessage.textContent="Add a front photo first.";return}
+  elements.identifyWithCardSightButton.disabled=true;elements.identifyWithCardSightButton.textContent="Identifying...";elements.cardSightResults.replaceChildren();
+  try{
+    const client=createCardSightClient();
+    const chosen=String(elements.scanSportSuggestion.value||"Baseball").toLowerCase();
+    const sports=["baseball","football","basketball","hockey"];
+    const order=sports.includes(chosen)?[chosen,...sports.filter(s=>s!==chosen)]:sports;
+    let detection=null,segment=null;
+    for(const sport of order){
+      elements.cardSightMessage.textContent=`Checking ${titleCase(sport)}...`;
+      const result=await client.identify.cardBySegment(sport,front);
+      const found=CardSightSdk.getHighestConfidenceDetection?CardSightSdk.getHighestConfidenceDetection(result.data):result.data?.detections?.[0];
+      if(found?.card?.id||found?.card?.setId){detection=found;segment=sport;break}
+    }
+    if(!detection){elements.cardSightMessage.textContent="No usable CardSight match. Try catalog search or a clearer photo.";return}
+    selectedCardSightCard=detection.card;applyCardSightCardToSuggestions(detection.card,segment);
+    elements.scanConfidenceBadge.textContent=`CardSight ${detection.confidence||"match"}`;
+    renderCardSightCandidates([detection.card],detection.card.id?"Photo match":"Set-level match");
+    elements.cardSightMessage.textContent=detection.card.id?"Exact CardSight match applied. Review every field.":"Set matched; complete the missing card details.";
+    if(detection.card.id)await fillCardSightPricing(detection.card.id);
+  }catch(error){console.error(error);elements.cardSightMessage.textContent=error?.message||"CardSight identification failed."}
+  finally{elements.identifyWithCardSightButton.disabled=false;elements.identifyWithCardSightButton.textContent="Identify front photo"}
+}
+
+async function searchCardSightCatalog(query){
+  if(!requireCardSightKey())return;
+  const q=String(query||"").trim()||buildScanSearchText();
+  if(!q){elements.cardSightMessage.textContent="Enter a player/card description or run OCR first.";return}
+  elements.searchCardSightButton.disabled=true;elements.searchCardSightButton.textContent="Searching...";elements.cardSightResults.replaceChildren();
+  try{
+    const client=createCardSightClient(),sport=String(elements.scanSportSuggestion.value||"").toLowerCase();
+    const params={q,type:"card",take:12};if(["baseball","football","basketball","hockey"].includes(sport))params.segment=sport;
+    const response=await client.catalog.search(params);
+    const results=response?.data?.results||(Array.isArray(response?.data)?response.data:[]);
+    if(!results.length){elements.cardSightMessage.textContent="No catalog matches. Try fewer words.";return}
+    renderCardSightCandidates(results,"Catalog result");elements.cardSightMessage.textContent=`${results.length} possible match${results.length===1?"":"es"} found.`;
+  }catch(error){console.error(error);elements.cardSightMessage.textContent=error?.message||"Catalog search failed."}
+  finally{elements.searchCardSightButton.disabled=false;elements.searchCardSightButton.textContent="Search catalog"}
+}
+
+function renderCardSightCandidates(items,label){
+  elements.cardSightResults.replaceChildren();
+  for(const item of items){
+    const article=document.createElement("article");article.className="cardsight-result";
+    const info=document.createElement("div"),title=document.createElement("strong"),meta=document.createElement("span");
+    title.textContent=CardSightSdk.formatCardDisplay?CardSightSdk.formatCardDisplay(item):[item.year,item.manufacturer,item.releaseName,item.setName,item.name,item.number?`#${item.number}`:null].filter(Boolean).join(" ");
+    meta.textContent=[label,item.parallel?.name,item.parallel?.numberedTo?`/${item.parallel.numberedTo}`:null].filter(Boolean).join(" • ");
+    info.append(title,meta);
+    const button=document.createElement("button");button.type="button";button.className="button button-secondary";button.textContent="Use match";button.addEventListener("click",()=>selectCardSightCatalogCard(item));
+    article.append(info,button);elements.cardSightResults.append(article);
+  }
+}
+
+async function selectCardSightCatalogCard(item){
+  elements.cardSightMessage.textContent="Loading full card details...";
+  try{
+    let card=item;const client=createCardSightClient();
+    if(item.id){try{const full=await client.catalog.cards.get(item.id);if(full?.data)card=full.data}catch(error){console.warn(error)}}
+    selectedCardSightCard=card;applyCardSightCardToSuggestions(card);elements.scanConfidenceBadge.textContent="CardSight catalog match";elements.cardSightMessage.textContent="Catalog details applied. Review before saving.";if(card.id)await fillCardSightPricing(card.id);
+  }catch(error){console.error(error);elements.cardSightMessage.textContent=error?.message||"Could not load that card."}
+}
+
+function applyCardSightCardToSuggestions(card,sportSegment=null){
+  if(card.name)elements.scanPlayerSuggestion.value=card.name;if(card.year)elements.scanYearSuggestion.value=card.year;if(card.manufacturer)elements.scanBrandSuggestion.value=card.manufacturer;
+  const setValue=card.setName||card.releaseName||"";if(setValue)elements.scanSetSuggestion.value=setValue;if(card.number)elements.scanNumberSuggestion.value=card.number;
+  if(card.parallel?.name)elements.scanParallelSuggestion.value=card.parallel.numberedTo?`${card.parallel.name} /${card.parallel.numberedTo}`:card.parallel.name;
+  if(sportSegment)elements.scanSportSuggestion.value=titleCase(sportSegment);
+  const rookieText=[card.name,card.setName,card.releaseName].filter(Boolean).join(" ");if(/\b(RC|ROOKIE)\b/i.test(rookieText))elements.scanRookieSuggestion.checked=true;
+  scanDuplicateCard=findPossibleDuplicate({player:elements.scanPlayerSuggestion.value,year:elements.scanYearSuggestion.value,cardNumber:elements.scanNumberSuggestion.value});updateDuplicateWarning();
+  elements.scanResults.classList.remove("hidden");elements.scanPlaceholder.classList.add("hidden");
+}
+
+async function fillCardSightPricing(cardId){
+  elements.cardSightMessage.textContent="Looking up recent sales...";
+  try{
+    const response=await createCardSightClient().pricing.get(cardId,{period:"1y",listing_type:"both"});
+    const estimate=estimateCardSightValue(response?.data);
+    if(estimate===null){elements.cardSightMessage.textContent="Card matched, but no usable recent-sales estimate was returned.";return}
+    elements.scanValueSuggestion.value=estimate.toFixed(2);elements.cardSightMessage.textContent=`Suggested value ${currency(estimate)} added from recent sales. Review before saving.`;
+  }catch(error){console.warn(error);elements.cardSightMessage.textContent="Card matched. Pricing was unavailable; use the existing research links."}
+}
+function estimateCardSightValue(data){
+  if(!data)return null;const prices=(data.raw?.records||data.records||[]).map(r=>Number(r.price)).filter(Number.isFinite);
+  if(prices.length)return robustPriceAverage(prices);
+  const graded=[];for(const company of data.graded||[])for(const grade of company.grades||[])for(const record of grade.records||[]){const price=Number(record.price);if(Number.isFinite(price))graded.push(price)}
+  return graded.length?robustPriceAverage(graded):null;
+}
+function robustPriceAverage(prices){const sorted=[...prices].sort((a,b)=>a-b),trimmed=sorted.length>=5?sorted.slice(1,-1):sorted;return trimmed.reduce((s,p)=>s+p,0)/trimmed.length}
+
 function previewScanPhoto(input, preview) {
   const file = input.files?.[0];
   if (!file) { preview.removeAttribute("src"); preview.classList.add("hidden"); return; }
@@ -1386,13 +1511,13 @@ function applyScanSuggestions() {
   document.querySelector("#playerInput").value=elements.scanPlayerSuggestion.value.trim();document.querySelector("#yearInput").value=elements.scanYearSuggestion.value.trim();
   document.querySelector("#brandInput").value=elements.scanBrandSuggestion.value.trim();document.querySelector("#setInput").value=elements.scanSetSuggestion.value.trim();
   document.querySelector("#cardNumberInput").value=elements.scanNumberSuggestion.value.trim();document.querySelector("#sportInput").value=elements.scanSportSuggestion.value;
-  elements.parallelInput.value=elements.scanParallelSuggestion.value.trim();elements.rookieInput.checked=elements.scanRookieSuggestion.checked;
+  elements.parallelInput.value=elements.scanParallelSuggestion.value.trim();elements.rookieInput.checked=elements.scanRookieSuggestion.checked;if(elements.scanValueSuggestion.value!==""){document.querySelector("#valueInput").value=elements.scanValueSuggestion.value;}
   transferScanFile(elements.scanFrontInput,elements.frontPhotoInput,elements.frontPreview);transferScanFile(elements.scanBackInput,elements.backPhotoInput,elements.backPreview);
   navigateTo("add");setCardMessage("Scan suggestions applied. Review every field before saving.");
 }
 function transferScanFile(source,target,preview){const file=source.files?.[0];if(!file)return;const dt=new DataTransfer();dt.items.add(file);target.files=dt.files;previewSelectedPhoto(target,preview)}
 function openScanPricingSearch(){const q=[elements.scanYearSuggestion.value,elements.scanBrandSuggestion.value,elements.scanSetSuggestion.value,elements.scanPlayerSuggestion.value,elements.scanNumberSuggestion.value?`#${elements.scanNumberSuggestion.value}`:"",elements.scanParallelSuggestion.value,elements.scanRookieSuggestion.checked?"rookie RC":""].filter(Boolean).join(" ");if(!q){elements.scanMessage.textContent="Not enough details to search.";return}window.open(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Complete=1&LH_Sold=1`,"_blank","noopener,noreferrer")}
-function resetScanAssistant(){elements.scanFrontInput.value="";elements.scanBackInput.value="";scanPreviewUrls.forEach(URL.revokeObjectURL);scanPreviewUrls=[];[elements.scanFrontPreview,elements.scanBackPreview].forEach(p=>{p.removeAttribute("src");p.classList.add("hidden")});[elements.scanPlayerSuggestion,elements.scanYearSuggestion,elements.scanBrandSuggestion,elements.scanSetSuggestion,elements.scanNumberSuggestion,elements.scanParallelSuggestion].forEach(i=>i.value="");elements.scanSportSuggestion.value="Other";elements.scanRookieSuggestion.checked=false;elements.scanResults.classList.add("hidden");elements.scanPlaceholder.classList.remove("hidden");elements.scanProgressWrap.classList.add("hidden");elements.scanMessage.textContent="";scanDuplicateCard=null;updateDuplicateWarning()}
+function resetScanAssistant(){elements.scanFrontInput.value="";elements.scanBackInput.value="";scanPreviewUrls.forEach(URL.revokeObjectURL);scanPreviewUrls=[];[elements.scanFrontPreview,elements.scanBackPreview].forEach(p=>{p.removeAttribute("src");p.classList.add("hidden")});[elements.scanPlayerSuggestion,elements.scanYearSuggestion,elements.scanBrandSuggestion,elements.scanSetSuggestion,elements.scanNumberSuggestion,elements.scanParallelSuggestion,elements.scanValueSuggestion].forEach(i=>i.value="");elements.scanSportSuggestion.value="Other";elements.scanRookieSuggestion.checked=false;elements.scanResults.classList.add("hidden");elements.scanPlaceholder.classList.remove("hidden");elements.scanProgressWrap.classList.add("hidden");elements.scanMessage.textContent="";elements.cardSightMessage.textContent="";elements.cardSightResults.replaceChildren();elements.cardSightSearchInput.value="";selectedCardSightCard=null;scanDuplicateCard=null;updateDuplicateWarning()}
 function setScanProgress(p,m){elements.scanProgressBar.style.width=`${Math.max(0,Math.min(100,p))}%`;elements.scanProgressText.textContent=m}
 
 function renderTradeBuilder() {

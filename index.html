@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=16">
+  <link rel="stylesheet" href="./css/app.css?v=17">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -567,6 +567,7 @@
                   <label>Card number<input id="scanNumberSuggestion" maxlength="40"></label>
                   <label>Sport<select id="scanSportSuggestion"><option>Baseball</option><option>Basketball</option><option>Football</option><option>Hockey</option><option>Soccer</option><option>Other</option></select></label>
                   <label>Parallel / variation<input id="scanParallelSuggestion" maxlength="120"></label>
+                  <label>Suggested value<input id="scanValueSuggestion" type="number" min="0" step="0.01" inputmode="decimal"></label>
                   <label class="scan-check"><input id="scanRookieSuggestion" type="checkbox"><span>Possible rookie card</span></label>
                 </div>
 
@@ -591,6 +592,36 @@
               </div>
             </section>
           </div>
+
+          <section class="cardsight-panel">
+            <div class="cardsight-heading">
+              <div>
+                <p class="eyebrow accent-text">Optional catalog intelligence</p>
+                <h3>CardSight Assistant</h3>
+                <p class="muted">Use photo identification or search the structured catalog when OCR is uncertain.</p>
+              </div>
+              <span id="cardSightStatusBadge" class="research-date">API key not set</span>
+            </div>
+            <details id="cardSightSettings" class="cardsight-settings">
+              <summary>CardSight API settings</summary>
+              <div class="cardsight-key-row">
+                <label>API key<input id="cardSightApiKeyInput" type="password" autocomplete="off" placeholder="Paste CardSight API key"></label>
+                <button id="saveCardSightKeyButton" class="button" type="button">Save key</button>
+                <button id="clearCardSightKeyButton" class="button button-secondary" type="button">Clear</button>
+              </div>
+              <p class="muted cardsight-key-note">Saved only in this browser on this device—not GitHub or Supabase.</p>
+            </details>
+            <div class="cardsight-actions">
+              <button id="identifyWithCardSightButton" class="button" type="button">Identify front photo</button>
+              <div class="cardsight-search-box">
+                <input id="cardSightSearchInput" type="search" placeholder="Player or card description">
+                <button id="searchCardSightButton" class="button button-secondary" type="button">Search catalog</button>
+              </div>
+            </div>
+            <p id="cardSightMessage" class="message" aria-live="polite"></p>
+            <div id="cardSightResults" class="cardsight-results"></div>
+          </section>
+
           <p id="scanMessage" class="message" aria-live="polite"></p>
         </section>
       </section>
@@ -887,6 +918,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=16"></script>
+  <script type="module" src="./js/app.js?v=17"></script>
 </body>
 </html>
