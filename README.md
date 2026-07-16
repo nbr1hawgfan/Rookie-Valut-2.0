@@ -1,8 +1,14 @@
-# Rookie Vault Navigation + OCR Tuning Fix
+# Rookie Vault Set Tracker v1
 
-No Supabase migration is required.
+## First: run the migration
 
-Replace:
+Run:
+
+- `supabase/set-tracker-migration.sql`
+
+in Supabase SQL Editor.
+
+## Then replace
 
 - `index.html`
 - `css/app.css`
@@ -13,19 +19,22 @@ Keep:
 
 - `js/config.js`
 
-## Fixes
+## Adds
 
-- Only one bottom-navigation button is highlighted at a time
-- Scan is no longer permanently styled as selected
-- Active navigation now uses `aria-current`
-- OCR tries both high-contrast and natural-color image processing
-- Rookie Vault keeps the OCR result with the stronger useful-text score
-- Expanded card-number patterns
-- Added Score, Prestige, Heroes and Contenders recognition
-- PWA cache version `rookie-vault-v14`
+- Set Tracker button on Home
+- Create, edit and delete set goals
+- Match owned cards automatically by year, brand, set and numeric card number
+- Completion percentage and progress bars
+- Owned and missing card-number grids
+- Select a missing number and prefill Add Card
+- Home dashboard set-progress summaries
+- Set-complete celebration state
+- PWA cache version `rookie-vault-v15`
 
-The extra OCR pass may take somewhat longer, but should improve difficult cards. OCR will still struggle with foil glare, highly stylized names, tiny text and sideways card designs.
+## Important limitation
+
+Version 1 is designed for numbered base sets such as cards 1 through 220. It extracts the first numeric part of a card number. Insert sets and alphanumeric checklists will need a more advanced checklist mode later.
 
 Suggested commit:
 
-`Fix navigation highlight and improve OCR accuracy`
+`Add automatic set tracker and missing card goals`

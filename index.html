@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=14">
+  <link rel="stylesheet" href="./css/app.css?v=15">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -61,7 +61,10 @@
             <h2>Brenton's Collection</h2>
             <p class="muted">A quick look at what is inside your collection.</p>
           </div>
-          <button id="homeAddButton" class="button" type="button">Add a card</button>
+          <div class="welcome-actions">
+            <button id="homeAddButton" class="button" type="button">Add a card</button>
+            <button id="homeSetsButton" class="button button-secondary" type="button">Set Tracker</button>
+          </div>
         </section>
 
         <section class="stats-grid">
@@ -116,6 +119,19 @@
           </div>
           <div id="recentCardsGrid" class="recent-cards-grid"></div>
           <p id="recentEmptyState" class="empty-state">No cards yet.</p>
+        </section>
+
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Set progress</p>
+              <h2>Building sets</h2>
+            </div>
+            <button id="manageSetsButton" class="button button-secondary" type="button">Manage sets</button>
+          </div>
+          <div id="homeSetProgressGrid" class="home-set-progress-grid"></div>
+          <p id="homeSetEmpty" class="empty-state">No set goals yet. Create one to start tracking completion.</p>
         </section>
 
         <section class="panel backup-panel">
@@ -385,6 +401,58 @@
 
 
 
+
+      <section id="setsView" class="app-view hidden">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Collection goals</p>
+              <h2>Set Tracker</h2>
+              <p class="muted">Track numbered base sets automatically from cards already in the vault.</p>
+            </div>
+            <button id="newSetGoalButton" class="button" type="button">New set goal</button>
+          </div>
+
+          <form id="setGoalForm" class="set-goal-form hidden">
+            <input id="setGoalIdInput" type="hidden">
+
+            <label>Goal name
+              <input id="setGoalNameInput" required maxlength="140" placeholder="2024 Topps Chrome Base Set">
+            </label>
+
+            <label>Year
+              <input id="setGoalYearInput" type="number" min="1900" max="2200" required inputmode="numeric">
+            </label>
+
+            <label>Brand
+              <input id="setGoalBrandInput" required maxlength="100" placeholder="Topps">
+            </label>
+
+            <label>Set
+              <input id="setGoalSetInput" required maxlength="120" placeholder="Chrome">
+            </label>
+
+            <label>Total cards in set
+              <input id="setGoalTotalInput" type="number" min="1" max="5000" required inputmode="numeric" placeholder="220">
+            </label>
+
+            <label>Starting number
+              <input id="setGoalStartInput" type="number" min="0" max="9999" value="1" required inputmode="numeric">
+            </label>
+
+            <div class="wide form-actions">
+              <button id="saveSetGoalButton" class="button" type="submit">Save set goal</button>
+              <button id="cancelSetGoalButton" class="button button-secondary" type="button">Cancel</button>
+            </div>
+          </form>
+
+          <p id="setGoalMessage" class="message" aria-live="polite"></p>
+
+          <div id="setGoalsGrid" class="set-goals-grid"></div>
+          <p id="setGoalsEmpty" class="empty-state">No set goals yet.</p>
+        </section>
+      </section>
+
       <section id="scanView" class="app-view hidden">
         <section class="panel">
           <div class="section-heading">
@@ -574,6 +642,54 @@
     </section>
   </main>
 
+
+  <dialog id="setDialog" class="card-dialog set-dialog">
+    <button id="closeSetDialogButton" class="dialog-close" type="button" aria-label="Close set details">×</button>
+
+    <div class="set-detail-content">
+      <p class="eyebrow accent-text">Set progress</p>
+      <h2 id="setDetailName"></h2>
+      <p id="setDetailMeta" class="muted"></p>
+
+      <div class="set-progress-hero">
+        <div>
+          <span>Complete</span>
+          <strong id="setDetailPercent">0%</strong>
+        </div>
+        <div>
+          <span>Owned</span>
+          <strong id="setDetailOwned">0 / 0</strong>
+        </div>
+      </div>
+
+      <div class="set-progress-track">
+        <div id="setDetailProgressBar" class="set-progress-bar"></div>
+      </div>
+
+      <section class="set-detail-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow accent-text">Missing cards</p>
+            <h3 id="missingCardsHeading">0 missing</h3>
+          </div>
+          <button id="addMissingCardButton" class="button" type="button">Add missing card</button>
+        </div>
+        <div id="missingNumberGrid" class="missing-number-grid"></div>
+        <p id="setCompleteMessage" class="set-complete-message hidden">Set complete!</p>
+      </section>
+
+      <section class="set-detail-section">
+        <p class="eyebrow accent-text">Owned numbers</p>
+        <div id="ownedNumberGrid" class="missing-number-grid owned-grid"></div>
+      </section>
+
+      <div class="detail-actions">
+        <button id="editSetGoalButton" class="button button-secondary" type="button">Edit goal</button>
+        <button id="deleteSetGoalButton" class="danger-button" type="button">Delete goal</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="cardDialog" class="card-dialog">
     <button id="closeDialogButton" class="dialog-close" type="button" aria-label="Close card details">×</button>
 
@@ -708,6 +824,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=14"></script>
+  <script type="module" src="./js/app.js?v=15"></script>
 </body>
 </html>

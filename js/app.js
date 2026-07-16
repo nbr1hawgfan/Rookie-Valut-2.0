@@ -46,6 +46,39 @@ const elements = {
   scanBackText: document.querySelector("#scanBackText"),
   scanMessage: document.querySelector("#scanMessage"),
   homeAddButton: document.querySelector("#homeAddButton"),
+  homeSetsButton: document.querySelector("#homeSetsButton"),
+  manageSetsButton: document.querySelector("#manageSetsButton"),
+  homeSetProgressGrid: document.querySelector("#homeSetProgressGrid"),
+  homeSetEmpty: document.querySelector("#homeSetEmpty"),
+  setsView: document.querySelector("#setsView"),
+  newSetGoalButton: document.querySelector("#newSetGoalButton"),
+  setGoalForm: document.querySelector("#setGoalForm"),
+  setGoalIdInput: document.querySelector("#setGoalIdInput"),
+  setGoalNameInput: document.querySelector("#setGoalNameInput"),
+  setGoalYearInput: document.querySelector("#setGoalYearInput"),
+  setGoalBrandInput: document.querySelector("#setGoalBrandInput"),
+  setGoalSetInput: document.querySelector("#setGoalSetInput"),
+  setGoalTotalInput: document.querySelector("#setGoalTotalInput"),
+  setGoalStartInput: document.querySelector("#setGoalStartInput"),
+  saveSetGoalButton: document.querySelector("#saveSetGoalButton"),
+  cancelSetGoalButton: document.querySelector("#cancelSetGoalButton"),
+  setGoalMessage: document.querySelector("#setGoalMessage"),
+  setGoalsGrid: document.querySelector("#setGoalsGrid"),
+  setGoalsEmpty: document.querySelector("#setGoalsEmpty"),
+  setDialog: document.querySelector("#setDialog"),
+  closeSetDialogButton: document.querySelector("#closeSetDialogButton"),
+  setDetailName: document.querySelector("#setDetailName"),
+  setDetailMeta: document.querySelector("#setDetailMeta"),
+  setDetailPercent: document.querySelector("#setDetailPercent"),
+  setDetailOwned: document.querySelector("#setDetailOwned"),
+  setDetailProgressBar: document.querySelector("#setDetailProgressBar"),
+  missingCardsHeading: document.querySelector("#missingCardsHeading"),
+  missingNumberGrid: document.querySelector("#missingNumberGrid"),
+  ownedNumberGrid: document.querySelector("#ownedNumberGrid"),
+  setCompleteMessage: document.querySelector("#setCompleteMessage"),
+  addMissingCardButton: document.querySelector("#addMissingCardButton"),
+  editSetGoalButton: document.querySelector("#editSetGoalButton"),
+  deleteSetGoalButton: document.querySelector("#deleteSetGoalButton"),
   viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
   recentCardsGrid: document.querySelector("#recentCardsGrid"),
   recentEmptyState: document.querySelector("#recentEmptyState"),
@@ -183,6 +216,9 @@ let otherTradeItems = [];
 let scanPreviewUrls = [];
 let scanDuplicateCard = null;
 let scanOcrWorker = null;
+let setGoals = [];
+let selectedSetGoal = null;
+let selectedMissingNumber = null;
 
 applyInitialTheme();
 init();
@@ -225,6 +261,8 @@ function bindEvents() {
   });
 
   elements.homeAddButton.addEventListener("click", () => navigateTo("add"));
+  elements.homeSetsButton.addEventListener("click", () => navigateTo("sets"));
+  elements.manageSetsButton.addEventListener("click", () => navigateTo("sets"));
   elements.viewAllCardsButton.addEventListener("click", () => navigateTo("collection"));
   elements.exportCsvButton.addEventListener("click", exportCollectionCsv);
   elements.exportJsonButton.addEventListener("click", exportCollectionJson);
@@ -239,6 +277,16 @@ function bindEvents() {
   elements.useScanSuggestionsButton.addEventListener("click", applyScanSuggestions);
   elements.scanPricingSearchButton.addEventListener("click", openScanPricingSearch);
   elements.increaseDuplicateButton.addEventListener("click", increaseDuplicateQuantity);
+  elements.newSetGoalButton.addEventListener("click", () => openSetGoalForm());
+  elements.cancelSetGoalButton.addEventListener("click", closeSetGoalForm);
+  elements.setGoalForm.addEventListener("submit", saveSetGoal);
+  elements.closeSetDialogButton.addEventListener("click", closeSetDialog);
+  elements.editSetGoalButton.addEventListener("click", editSelectedSetGoal);
+  elements.deleteSetGoalButton.addEventListener("click", deleteSelectedSetGoal);
+  elements.addMissingCardButton.addEventListener("click", addSelectedMissingCard);
+  elements.setDialog.addEventListener("click", event => {
+    if (event.target === elements.setDialog) closeSetDialog();
+  });
   updateLastBackupDisplay();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
@@ -333,6 +381,7 @@ async function showCorrectScreen(session) {
   if (signedIn) {
     await loadCurrentCollection();
     await loadCards();
+    await loadSetGoals();
   } else {
     currentCollectionId = null;
     cards = [];
@@ -647,6 +696,358 @@ function previewSelectedPhoto(input, imageElement) {
 
 
 
+
+
+async function loadSetGoals() {
+  if (!currentCollectionId) {
+    setGoals = [];
+    renderSetGoals();
+    renderHomeSetProgress();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("set_goals")
+    .select("*")
+    .eq("collection_id", currentCollectionId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Set goals loading failed:", error);
+    elements.setGoalMessage.textContent = "Could not load set goals.";
+    return;
+  }
+
+  setGoals = data || [];
+  renderSetGoals();
+  renderHomeSetProgress();
+}
+
+function calculateSetProgress(goal) {
+  const ownedNumbers = new Set();
+
+  for (const card of cards) {
+    if (card.deleted_at) continue;
+
+    const matchesYear = String(card.card_year || "") === String(goal.card_year);
+    const matchesBrand =
+      normalizeMatchText(card.brand) === normalizeMatchText(goal.brand);
+    const matchesSet =
+      normalizeMatchText(card.set_name) === normalizeMatchText(goal.set_name);
+
+    if (!matchesYear || !matchesBrand || !matchesSet) continue;
+
+    const parsedNumber = parseNumericCardNumber(card.card_number);
+    if (parsedNumber === null) continue;
+
+    const start = Number(goal.start_number || 1);
+    const end = start + Number(goal.total_cards || 0) - 1;
+
+    if (parsedNumber >= start && parsedNumber <= end) {
+      ownedNumbers.add(parsedNumber);
+    }
+  }
+
+  const start = Number(goal.start_number || 1);
+  const total = Number(goal.total_cards || 0);
+  const allNumbers = Array.from({ length: total }, (_, index) => start + index);
+  const missingNumbers = allNumbers.filter(number => !ownedNumbers.has(number));
+  const percent = total > 0
+    ? Math.round((ownedNumbers.size / total) * 100)
+    : 0;
+
+  return {
+    ownedNumbers: [...ownedNumbers].sort((a, b) => a - b),
+    missingNumbers,
+    ownedCount: ownedNumbers.size,
+    total,
+    percent
+  };
+}
+
+function parseNumericCardNumber(value) {
+  const match = String(value || "").match(/(\d{1,5})/);
+  return match ? Number(match[1]) : null;
+}
+
+function renderHomeSetProgress() {
+  elements.homeSetProgressGrid.replaceChildren();
+
+  for (const goal of setGoals.slice(0, 3)) {
+    const progress = calculateSetProgress(goal);
+    const article = buildSetGoalCard(goal, progress, true);
+    elements.homeSetProgressGrid.append(article);
+  }
+
+  elements.homeSetEmpty.classList.toggle("hidden", setGoals.length > 0);
+}
+
+function renderSetGoals() {
+  elements.setGoalsGrid.replaceChildren();
+
+  for (const goal of setGoals) {
+    const progress = calculateSetProgress(goal);
+    elements.setGoalsGrid.append(buildSetGoalCard(goal, progress, false));
+  }
+
+  elements.setGoalsEmpty.classList.toggle("hidden", setGoals.length > 0);
+}
+
+function buildSetGoalCard(goal, progress, compact) {
+  const article = document.createElement("article");
+  article.className = compact ? "home-set-card" : "set-goal-card";
+
+  if (progress.percent === 100) {
+    article.classList.add("complete");
+  }
+
+  const title = document.createElement("h3");
+  title.textContent = goal.name;
+
+  const meta = document.createElement("p");
+  meta.textContent = `${goal.card_year} • ${goal.brand} • ${goal.set_name}`;
+
+  const track = document.createElement("div");
+  track.className = "mini-progress-track";
+
+  const bar = document.createElement("div");
+  bar.className = "mini-progress-bar";
+  bar.style.width = `${progress.percent}%`;
+  track.append(bar);
+
+  const footer = document.createElement("div");
+  footer.className = compact ? "home-set-footer" : "set-goal-footer";
+
+  const owned = document.createElement("span");
+  owned.textContent = `${progress.ownedCount} / ${progress.total}`;
+
+  const percent = document.createElement("span");
+  percent.textContent = `${progress.percent}%`;
+
+  footer.append(owned, percent);
+  article.append(title, meta, track, footer);
+  article.tabIndex = 0;
+  article.setAttribute("role", "button");
+
+  article.addEventListener("click", () => openSetDialog(goal));
+  article.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openSetDialog(goal);
+    }
+  });
+
+  return article;
+}
+
+function openSetGoalForm(goal = null) {
+  elements.setGoalForm.classList.remove("hidden");
+  elements.setGoalMessage.textContent = "";
+
+  if (goal) {
+    elements.setGoalIdInput.value = goal.id;
+    elements.setGoalNameInput.value = goal.name;
+    elements.setGoalYearInput.value = goal.card_year;
+    elements.setGoalBrandInput.value = goal.brand;
+    elements.setGoalSetInput.value = goal.set_name;
+    elements.setGoalTotalInput.value = goal.total_cards;
+    elements.setGoalStartInput.value = goal.start_number || 1;
+    elements.saveSetGoalButton.textContent = "Update set goal";
+  } else {
+    elements.setGoalForm.reset();
+    elements.setGoalIdInput.value = "";
+    elements.setGoalStartInput.value = "1";
+    elements.saveSetGoalButton.textContent = "Save set goal";
+  }
+
+  elements.setGoalForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeSetGoalForm() {
+  elements.setGoalForm.reset();
+  elements.setGoalIdInput.value = "";
+  elements.setGoalStartInput.value = "1";
+  elements.setGoalForm.classList.add("hidden");
+  elements.setGoalMessage.textContent = "";
+}
+
+async function saveSetGoal(event) {
+  event.preventDefault();
+
+  const id = elements.setGoalIdInput.value;
+  const payload = {
+    collection_id: currentCollectionId,
+    name: elements.setGoalNameInput.value.trim(),
+    card_year: Number(elements.setGoalYearInput.value),
+    brand: elements.setGoalBrandInput.value.trim(),
+    set_name: elements.setGoalSetInput.value.trim(),
+    total_cards: Number(elements.setGoalTotalInput.value),
+    start_number: Number(elements.setGoalStartInput.value || 1)
+  };
+
+  elements.saveSetGoalButton.disabled = true;
+  elements.saveSetGoalButton.textContent = id ? "Updating..." : "Saving...";
+
+  let error;
+
+  if (id) {
+    ({ error } = await supabase
+      .from("set_goals")
+      .update(payload)
+      .eq("id", id)
+      .eq("collection_id", currentCollectionId));
+  } else {
+    ({ error } = await supabase.from("set_goals").insert(payload));
+  }
+
+  elements.saveSetGoalButton.disabled = false;
+
+  if (error) {
+    console.error("Set goal save failed:", error);
+    elements.setGoalMessage.textContent = error.message || "Could not save set goal.";
+    elements.saveSetGoalButton.textContent = id ? "Update set goal" : "Save set goal";
+    return;
+  }
+
+  closeSetGoalForm();
+  await loadSetGoals();
+  elements.setGoalMessage.textContent = id
+    ? "Set goal updated."
+    : "Set goal created.";
+}
+
+function openSetDialog(goal) {
+  selectedSetGoal = goal;
+  selectedMissingNumber = null;
+
+  const progress = calculateSetProgress(goal);
+
+  elements.setDetailName.textContent = goal.name;
+  elements.setDetailMeta.textContent =
+    `${goal.card_year} • ${goal.brand} • ${goal.set_name} • ` +
+    `${goal.total_cards} cards`;
+  elements.setDetailPercent.textContent = `${progress.percent}%`;
+  elements.setDetailOwned.textContent =
+    `${progress.ownedCount} / ${progress.total}`;
+  elements.setDetailProgressBar.style.width = `${progress.percent}%`;
+  elements.missingCardsHeading.textContent =
+    `${progress.missingNumbers.length} missing`;
+
+  renderNumberGrid(
+    elements.missingNumberGrid,
+    progress.missingNumbers,
+    true
+  );
+
+  renderNumberGrid(
+    elements.ownedNumberGrid,
+    progress.ownedNumbers,
+    false
+  );
+
+  elements.setCompleteMessage.classList.toggle(
+    "hidden",
+    progress.missingNumbers.length > 0
+  );
+
+  elements.addMissingCardButton.disabled =
+    progress.missingNumbers.length === 0;
+
+  if (progress.missingNumbers.length > 0) {
+    selectedMissingNumber = progress.missingNumbers[0];
+    highlightSelectedMissingNumber();
+  }
+
+  elements.setDialog.showModal();
+}
+
+function renderNumberGrid(container, numbers, selectable) {
+  container.replaceChildren();
+
+  for (const number of numbers) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "number-chip";
+    chip.textContent = String(number);
+
+    if (!selectable) {
+      chip.disabled = true;
+    } else {
+      chip.addEventListener("click", () => {
+        selectedMissingNumber = number;
+        highlightSelectedMissingNumber();
+      });
+    }
+
+    container.append(chip);
+  }
+}
+
+function highlightSelectedMissingNumber() {
+  for (const chip of elements.missingNumberGrid.querySelectorAll(".number-chip")) {
+    chip.classList.toggle(
+      "selected",
+      Number(chip.textContent) === Number(selectedMissingNumber)
+    );
+  }
+}
+
+function closeSetDialog() {
+  if (elements.setDialog.open) {
+    elements.setDialog.close();
+  }
+
+  selectedSetGoal = null;
+  selectedMissingNumber = null;
+}
+
+function editSelectedSetGoal() {
+  if (!selectedSetGoal) return;
+  const goal = selectedSetGoal;
+  closeSetDialog();
+  navigateTo("sets");
+  openSetGoalForm(goal);
+}
+
+async function deleteSelectedSetGoal() {
+  if (!selectedSetGoal) return;
+
+  const confirmed = window.confirm(
+    `Delete the set goal "${selectedSetGoal.name}"? Cards will not be deleted.`
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("set_goals")
+    .delete()
+    .eq("id", selectedSetGoal.id)
+    .eq("collection_id", currentCollectionId);
+
+  if (error) {
+    console.error("Set goal delete failed:", error);
+    elements.setGoalMessage.textContent = "Could not delete set goal.";
+    return;
+  }
+
+  closeSetDialog();
+  await loadSetGoals();
+}
+
+function addSelectedMissingCard() {
+  if (!selectedSetGoal || selectedMissingNumber === null) return;
+
+  document.querySelector("#yearInput").value = selectedSetGoal.card_year;
+  document.querySelector("#brandInput").value = selectedSetGoal.brand;
+  document.querySelector("#setInput").value = selectedSetGoal.set_name;
+  document.querySelector("#cardNumberInput").value = selectedMissingNumber;
+
+  closeSetDialog();
+  navigateTo("add");
+  setCardMessage(
+    `Adding missing card #${selectedMissingNumber} for ${selectedSetGoal?.name || "set goal"}.`
+  );
+}
 
 function previewScanPhoto(input, preview) {
   const file = input.files?.[0];
@@ -1337,12 +1738,14 @@ function navigateTo(view) {
   const showCollection = view === "collection" || view === "trash";
   const showTrade = view === "trade";
   const showScan = view === "scan";
+  const showSets = view === "sets";
 
   elements.homeView.classList.toggle("hidden", !showHome);
   elements.addView.classList.toggle("hidden", !showAdd);
   elements.collectionView.classList.toggle("hidden", !showCollection);
   elements.tradeView.classList.toggle("hidden", !showTrade);
   elements.scanView.classList.toggle("hidden", !showScan);
+  elements.setsView.classList.toggle("hidden", !showSets);
 
   for (const button of document.querySelectorAll(".nav-button")) {
     const isActive = button.dataset.view === view;
@@ -1365,6 +1768,10 @@ function navigateTo(view) {
 
   if (view === "trade") {
     renderTradeBuilder();
+  }
+
+  if (view === "sets") {
+    renderSetGoals();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1555,6 +1962,7 @@ function renderCards() {
   elements.missingPhotoCount.textContent =
     activeCards.filter(card => !card.front_photo_path).length;
   renderRecentCards(activeCards);
+  renderHomeSetProgress();
 
   elements.sportFilters.classList.toggle("hidden", collectionView === "trash");
   elements.statusFilters.classList.toggle("hidden", collectionView === "trash");
