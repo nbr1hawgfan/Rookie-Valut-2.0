@@ -106,6 +106,19 @@ const elements = {
   detailPlayer: document.querySelector("#detailPlayer"),
   detailSet: document.querySelector("#detailSet"),
   detailValue: document.querySelector("#detailValue"),
+  pricingSearchText: document.querySelector("#pricingSearchText"),
+  copyPricingSearchButton: document.querySelector("#copyPricingSearchButton"),
+  ebaySoldLink: document.querySelector("#ebaySoldLink"),
+  ebayActiveLink: document.querySelector("#ebayActiveLink"),
+  sportsCardsProLink: document.querySelector("#sportsCardsProLink"),
+  googlePricingLink: document.querySelector("#googlePricingLink"),
+  pricingUpdateForm: document.querySelector("#pricingUpdateForm"),
+  pricingValueInput: document.querySelector("#pricingValueInput"),
+  pricingSourceInput: document.querySelector("#pricingSourceInput"),
+  pricingNotesInput: document.querySelector("#pricingNotesInput"),
+  savePricingButton: document.querySelector("#savePricingButton"),
+  pricingMessage: document.querySelector("#pricingMessage"),
+  priceResearchDate: document.querySelector("#priceResearchDate"),
   detailSport: document.querySelector("#detailSport"),
   detailStatus: document.querySelector("#detailStatus"),
   detailBadges: document.querySelector("#detailBadges"),
@@ -113,6 +126,7 @@ const elements = {
   detailParallel: document.querySelector("#detailParallel"),
   detailQuantity: document.querySelector("#detailQuantity"),
   detailPurchase: document.querySelector("#detailPurchase"),
+  detailPriceResearch: document.querySelector("#detailPriceResearch"),
   detailNotes: document.querySelector("#detailNotes"),
   activeDetailActions: document.querySelector("#activeDetailActions"),
   trashDetailActions: document.querySelector("#trashDetailActions"),
@@ -230,6 +244,8 @@ function bindEvents() {
   elements.detailDeleteButton.addEventListener("click", deleteSelectedCard);
   elements.detailRestoreButton.addEventListener("click", restoreSelectedCard);
   elements.detailPermanentDeleteButton.addEventListener("click", permanentlyDeleteSelectedCard);
+  elements.copyPricingSearchButton.addEventListener("click", copyPricingSearch);
+  elements.pricingUpdateForm.addEventListener("submit", savePricingResearch);
 
   elements.cardDialog.addEventListener("click", event => {
     if (event.target === elements.cardDialog) closeCardDialog();
@@ -842,6 +858,9 @@ function exportCollectionCsv() {
       ["Estimated Value", "estimated_value"],
       ["Purchase Price", "purchase_price"],
       ["Purchase Date", "purchase_date"],
+      ["Price Source", "price_source"],
+      ["Price Checked", "price_checked_at"],
+      ["Price Notes", "price_notes"],
       ["Storage Location", "storage_location"],
       ["Notes", "notes"],
       ["Front Photo Path", "front_photo_path"],
@@ -1342,7 +1361,9 @@ function openCardDialog(card) {
   elements.detailParallel.textContent = card.parallel_name || "None";
   elements.detailQuantity.textContent = String(card.quantity || 1);
   elements.detailPurchase.textContent = formatPurchase(card);
+  elements.detailPriceResearch.textContent = formatPriceResearch(card);
   elements.detailNotes.textContent = card.notes || "No notes";
+  populatePricingResearch(card);
 
   const isDeleted = Boolean(card.deleted_at);
   elements.activeDetailActions.classList.toggle("hidden", isDeleted);
@@ -1383,6 +1404,158 @@ function setDetailSide(side) {
   }
 }
 
+
+
+function populatePricingResearch(card) {
+  const searchText = buildPricingSearch(card);
+  const encoded = encodeURIComponent(searchText);
+
+  elements.pricingSearchText.value = searchText;
+  elements.pricingValueInput.value = Number(card.estimated_value || 0).toFixed(2);
+  elements.pricingSourceInput.value = card.price_source || "";
+  elements.pricingNotesInput.value = card.price_notes || "";
+
+  elements.ebaySoldLink.href =
+    `https://www.ebay.com/sch/i.html?_nkw=${encoded}&LH_Complete=1&LH_Sold=1`;
+  elements.ebayActiveLink.href =
+    `https://www.ebay.com/sch/i.html?_nkw=${encoded}`;
+  elements.sportsCardsProLink.href =
+    `https://www.sportscardspro.com/search-products?q=${encoded}`;
+  elements.googlePricingLink.href =
+    `https://www.google.com/search?q=${encodeURIComponent(searchText + " sports card sold price")}`;
+
+  elements.priceResearchDate.textContent =
+    card.price_checked_at
+      ? `Checked ${formatShortDate(card.price_checked_at)}`
+      : "Never checked";
+
+  elements.pricingMessage.textContent = "";
+}
+
+function buildPricingSearch(card) {
+  const parts = [
+    card.card_year,
+    card.brand,
+    card.set_name,
+    card.player_name,
+    card.card_number ? `#${card.card_number}` : null,
+    card.parallel_name,
+    card.is_rookie ? "rookie RC" : null,
+    card.is_autograph ? "autograph auto" : null,
+    card.is_memorabilia ? "patch memorabilia" : null,
+    card.is_numbered && card.print_run ? `/${card.print_run}` : null,
+    card.card_condition === "graded"
+      ? [card.grading_company, card.grade].filter(Boolean).join(" ")
+      : "raw"
+  ];
+
+  return parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+}
+
+async function copyPricingSearch() {
+  const text = elements.pricingSearchText.value;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    elements.pricingMessage.textContent = "Search copied.";
+  } catch (error) {
+    console.error("Clipboard failed:", error);
+    elements.pricingSearchText.select();
+    document.execCommand("copy");
+    elements.pricingMessage.textContent = "Search copied.";
+  }
+}
+
+async function savePricingResearch(event) {
+  event.preventDefault();
+  if (!selectedCard) return;
+
+  const value = Number(elements.pricingValueInput.value || 0);
+
+  if (!Number.isFinite(value) || value < 0) {
+    elements.pricingMessage.textContent = "Enter a valid estimated value.";
+    return;
+  }
+
+  elements.savePricingButton.disabled = true;
+  elements.savePricingButton.textContent = "Saving...";
+  elements.pricingMessage.textContent = "Saving pricing research...";
+
+  const checkedAt = new Date().toISOString();
+  const payload = {
+    estimated_value: value,
+    price_source: elements.pricingSourceInput.value || null,
+    price_notes: elements.pricingNotesInput.value.trim() || null,
+    price_checked_at: checkedAt
+  };
+
+  const { data, error } = await supabase
+    .from("cards")
+    .update(payload)
+    .eq("id", selectedCard.id)
+    .eq("collection_id", currentCollectionId)
+    .select("*")
+    .single();
+
+  elements.savePricingButton.disabled = false;
+  elements.savePricingButton.textContent = "Save pricing research";
+
+  if (error) {
+    console.error("Pricing save failed:", error);
+    elements.pricingMessage.textContent = error.message || "Could not save pricing research.";
+    return;
+  }
+
+  const cardIndex = cards.findIndex(card => card.id === selectedCard.id);
+  const retainedUrls = {
+    front_photo_url: selectedCard.front_photo_url,
+    back_photo_url: selectedCard.back_photo_url
+  };
+
+  selectedCard = { ...data, ...retainedUrls };
+
+  if (cardIndex >= 0) {
+    cards[cardIndex] = selectedCard;
+  }
+
+  elements.detailValue.textContent = currency(value);
+  elements.detailPriceResearch.textContent = formatPriceResearch(selectedCard);
+  elements.priceResearchDate.textContent = `Checked ${formatShortDate(checkedAt)}`;
+  elements.pricingMessage.textContent = "Pricing research saved.";
+
+  renderCards();
+  if (activeAppView === "trade") renderTradeBuilder();
+}
+
+function formatPriceResearch(card) {
+  const parts = [];
+
+  if (card.price_source) {
+    parts.push(card.price_source);
+  }
+
+  if (card.price_checked_at) {
+    parts.push(`checked ${formatShortDate(card.price_checked_at)}`);
+  }
+
+  if (card.price_notes) {
+    parts.push(card.price_notes);
+  }
+
+  return parts.length ? parts.join(" • ") : "Not researched yet";
+}
+
+function formatShortDate(value) {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) return "unknown date";
+
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
 
 function beginEditSelectedCard() {
   if (!selectedCard) return;

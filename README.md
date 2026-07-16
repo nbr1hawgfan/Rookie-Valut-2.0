@@ -1,8 +1,12 @@
-# Rookie Vault Trade Builder Upgrade
+# Rookie Vault Pricing Research Upgrade
 
-No Supabase migration is required.
+## First: run the migration
 
-Replace:
+Run this file in Supabase SQL Editor:
+
+- `supabase/pricing-research-migration.sql`
+
+## Then replace
 
 - `index.html`
 - `css/app.css`
@@ -15,26 +19,27 @@ Keep:
 
 ## Adds
 
-- Trade tab in bottom navigation
-- Select cards from Brenton's active collection
-- Add incoming cards manually
-- Quantity-aware values
-- Side-by-side totals
-- Difference calculation
-- Fairness rating
-- Clear-trade action
-- Mobile-friendly trade layout
-- PWA cache version `rookie-vault-v11`
+- Exact pricing search generated from card details
+- eBay sold-listing search
+- eBay active-listing search
+- SportsCardsPro search
+- General web pricing search
+- Copy-search button
+- Update estimated value from the detail screen
+- Save price source
+- Save comparable-sale notes
+- Save latest research date
+- Pricing fields included in CSV and JSON backups
+- PWA cache version `rookie-vault-v12`
 
-## Rating guide
+## Suggested test
 
-- Within 5%: Very fair
-- Within 12%: Close trade
-- Within 25%: Uneven
-- More than 25%: Very uneven
-
-This is guidance only. Condition, demand, grading, rarity, and recent comparable sales still matter.
+1. Open a card with good identifying details.
+2. Confirm the generated search includes player, year, set and card number.
+3. Open eBay sold and SportsCardsPro.
+4. Enter a revised estimated value, source and note.
+5. Save and confirm the dashboard and trade builder use the updated value.
 
 Suggested commit:
 
-`Add trade builder and fairness rating`
+`Add pricing research links and value history metadata`

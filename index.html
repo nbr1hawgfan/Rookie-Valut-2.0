@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=11">
+  <link rel="stylesheet" href="./css/app.css?v=12">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -519,6 +519,63 @@
           <strong id="detailValue">$0.00</strong>
         </div>
 
+        <section class="pricing-panel">
+          <div class="pricing-heading">
+            <div>
+              <p class="eyebrow accent-text">Pricing research</p>
+              <h3>Check comparable cards</h3>
+            </div>
+            <span id="priceResearchDate" class="research-date">Never checked</span>
+          </div>
+
+          <label>Generated search
+            <div class="copy-field">
+              <input id="pricingSearchText" type="text" readonly>
+              <button id="copyPricingSearchButton" class="button button-secondary" type="button">Copy</button>
+            </div>
+          </label>
+
+          <div class="pricing-links">
+            <a id="ebaySoldLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              eBay sold
+            </a>
+            <a id="ebayActiveLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              eBay active
+            </a>
+            <a id="sportsCardsProLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              SportsCardsPro
+            </a>
+            <a id="googlePricingLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              Web search
+            </a>
+          </div>
+
+          <form id="pricingUpdateForm" class="pricing-update-form">
+            <label>Updated estimated value
+              <input id="pricingValueInput" type="number" min="0" step="0.01" inputmode="decimal">
+            </label>
+
+            <label>Research source
+              <select id="pricingSourceInput">
+                <option value="">Select source</option>
+                <option value="eBay sold">eBay sold</option>
+                <option value="SportsCardsPro">SportsCardsPro</option>
+                <option value="Card show">Card show</option>
+                <option value="Local shop">Local shop</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label class="wide">Pricing notes
+              <textarea id="pricingNotesInput" rows="2" maxlength="500" placeholder="Example: Last 5 raw sales ranged from $18 to $24."></textarea>
+            </label>
+
+            <button id="savePricingButton" class="button wide" type="submit">Save pricing research</button>
+          </form>
+
+          <p id="pricingMessage" class="message" aria-live="polite"></p>
+        </section>
+
         <dl class="detail-list">
           <div><dt>Sport</dt><dd id="detailSport"></dd></div>
           <div><dt>Status</dt><dd id="detailStatus"></dd></div>
@@ -526,6 +583,7 @@
           <div><dt>Parallel</dt><dd id="detailParallel"></dd></div>
           <div><dt>Quantity</dt><dd id="detailQuantity"></dd></div>
           <div><dt>Purchase</dt><dd id="detailPurchase"></dd></div>
+          <div><dt>Price research</dt><dd id="detailPriceResearch"></dd></div>
           <div><dt>Notes</dt><dd id="detailNotes"></dd></div>
         </dl>
 
@@ -568,6 +626,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=11"></script>
+  <script type="module" src="./js/app.js?v=12"></script>
 </body>
 </html>
