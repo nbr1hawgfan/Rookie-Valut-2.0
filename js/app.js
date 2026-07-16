@@ -14,6 +14,7 @@ const elements = {
   homeView: document.querySelector("#homeView"),
   addView: document.querySelector("#addView"),
   collectionView: document.querySelector("#collectionView"),
+  tradeView: document.querySelector("#tradeView"),
   homeAddButton: document.querySelector("#homeAddButton"),
   viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
   recentCardsGrid: document.querySelector("#recentCardsGrid"),
@@ -23,6 +24,23 @@ const elements = {
   exportSummaryButton: document.querySelector("#exportSummaryButton"),
   lastBackupText: document.querySelector("#lastBackupText"),
   backupMessage: document.querySelector("#backupMessage"),
+  clearTradeButton: document.querySelector("#clearTradeButton"),
+  myTradeTotal: document.querySelector("#myTradeTotal"),
+  theirTradeTotal: document.querySelector("#theirTradeTotal"),
+  myTradeCount: document.querySelector("#myTradeCount"),
+  theirTradeCount: document.querySelector("#theirTradeCount"),
+  tradeRating: document.querySelector("#tradeRating"),
+  tradeDifference: document.querySelector("#tradeDifference"),
+  tradeAdvice: document.querySelector("#tradeAdvice"),
+  tradeSearchInput: document.querySelector("#tradeSearchInput"),
+  tradeCollectionGrid: document.querySelector("#tradeCollectionGrid"),
+  tradeCollectionEmpty: document.querySelector("#tradeCollectionEmpty"),
+  otherTradeForm: document.querySelector("#otherTradeForm"),
+  otherTradeNameInput: document.querySelector("#otherTradeNameInput"),
+  otherTradeValueInput: document.querySelector("#otherTradeValueInput"),
+  otherTradeQtyInput: document.querySelector("#otherTradeQtyInput"),
+  otherTradeList: document.querySelector("#otherTradeList"),
+  otherTradeEmpty: document.querySelector("#otherTradeEmpty"),
   authForm: document.querySelector("#authForm"),
   signupButton: document.querySelector("#signupButton"),
   logoutButton: document.querySelector("#logoutButton"),
@@ -116,6 +134,8 @@ let detailSide = "front";
 let editingCard = null;
 let collectionView = "active";
 let activeAppView = "home";
+let myTradeCardIds = new Set();
+let otherTradeItems = [];
 
 applyInitialTheme();
 init();
@@ -162,6 +182,9 @@ function bindEvents() {
   elements.exportCsvButton.addEventListener("click", exportCollectionCsv);
   elements.exportJsonButton.addEventListener("click", exportCollectionJson);
   elements.exportSummaryButton.addEventListener("click", exportCollectionSummary);
+  elements.clearTradeButton.addEventListener("click", clearTrade);
+  elements.tradeSearchInput.addEventListener("input", renderTradeBuilder);
+  elements.otherTradeForm.addEventListener("submit", addOtherTradeItem);
   updateLastBackupDisplay();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
@@ -344,6 +367,7 @@ async function loadCards() {
   await attachSignedPhotoUrls(cards);
   setCardMessage("");
   renderCards();
+  if (activeAppView === "trade") renderTradeBuilder();
 }
 
 async function attachSignedPhotoUrls(cardRows) {
@@ -565,6 +589,232 @@ function previewSelectedPhoto(input, imageElement) {
 
 
 
+
+
+function renderTradeBuilder() {
+  const activeCards = cards.filter(card => !card.deleted_at);
+  const query = elements.tradeSearchInput.value.trim().toLowerCase();
+
+  const filtered = activeCards.filter(card => {
+    const haystack = [
+      card.player_name,
+      card.sport,
+      card.brand,
+      card.set_name,
+      card.card_number,
+      card.parallel_name,
+      card.grade,
+      card.grading_company
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    return haystack.includes(query);
+  });
+
+  elements.tradeCollectionGrid.replaceChildren();
+
+  for (const card of filtered) {
+    const selected = myTradeCardIds.has(card.id);
+
+    const article = document.createElement("article");
+    article.className = `trade-select-card${selected ? " selected" : ""}`;
+
+    const thumb = document.createElement("div");
+    thumb.className = "trade-thumb";
+
+    if (card.front_photo_url) {
+      const image = document.createElement("img");
+      image.src = card.front_photo_url;
+      image.alt = `Front of ${card.player_name}`;
+      thumb.append(image);
+    } else {
+      thumb.textContent = "No photo";
+    }
+
+    const info = document.createElement("div");
+    info.className = "trade-select-info";
+
+    const name = document.createElement("strong");
+    name.textContent = card.player_name;
+
+    const meta = document.createElement("span");
+    meta.textContent = [
+      card.card_year,
+      card.brand,
+      card.set_name,
+      card.card_number ? `#${card.card_number}` : null
+    ].filter(Boolean).join(" • ");
+
+    info.append(name, meta);
+
+    const actions = document.createElement("div");
+    actions.className = "trade-select-actions";
+
+    const value = document.createElement("strong");
+    value.textContent = currency(tradeCardTotal(card));
+
+    const button = document.createElement("button");
+    button.className = "trade-toggle-button";
+    button.type = "button";
+    button.textContent = selected ? "Remove" : "Add";
+    button.addEventListener("click", () => toggleMyTradeCard(card.id));
+
+    actions.append(value, button);
+    article.append(thumb, info, actions);
+    elements.tradeCollectionGrid.append(article);
+  }
+
+  elements.tradeCollectionEmpty.classList.toggle("hidden", filtered.length > 0);
+  renderOtherTradeItems();
+  updateTradeSummary();
+}
+
+function toggleMyTradeCard(cardId) {
+  if (myTradeCardIds.has(cardId)) {
+    myTradeCardIds.delete(cardId);
+  } else {
+    myTradeCardIds.add(cardId);
+  }
+
+  renderTradeBuilder();
+}
+
+function addOtherTradeItem(event) {
+  event.preventDefault();
+
+  const name = elements.otherTradeNameInput.value.trim();
+  const value = Number(elements.otherTradeValueInput.value || 0);
+  const quantity = Math.max(1, Number(elements.otherTradeQtyInput.value || 1));
+
+  if (!name || !Number.isFinite(value) || value < 0) return;
+
+  otherTradeItems.push({
+    id: crypto.randomUUID(),
+    name,
+    value,
+    quantity
+  });
+
+  elements.otherTradeForm.reset();
+  elements.otherTradeQtyInput.value = "1";
+  renderTradeBuilder();
+}
+
+function renderOtherTradeItems() {
+  elements.otherTradeList.replaceChildren();
+
+  for (const item of otherTradeItems) {
+    const article = document.createElement("article");
+    article.className = "other-trade-item";
+
+    const info = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = item.name;
+
+    const meta = document.createElement("span");
+    meta.textContent = `${item.quantity} × ${currency(item.value)}`;
+
+    info.append(name, meta);
+
+    const total = document.createElement("strong");
+    total.textContent = currency(item.value * item.quantity);
+
+    const remove = document.createElement("button");
+    remove.className = "remove-trade-button";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      otherTradeItems = otherTradeItems.filter(entry => entry.id !== item.id);
+      renderTradeBuilder();
+    });
+
+    article.append(info, total, remove);
+    elements.otherTradeList.append(article);
+  }
+
+  elements.otherTradeEmpty.classList.toggle("hidden", otherTradeItems.length > 0);
+}
+
+function updateTradeSummary() {
+  const myCards = cards.filter(
+    card => !card.deleted_at && myTradeCardIds.has(card.id)
+  );
+
+  const myTotal = myCards.reduce(
+    (sum, card) => sum + tradeCardTotal(card),
+    0
+  );
+
+  const theirTotal = otherTradeItems.reduce(
+    (sum, item) => sum + item.value * item.quantity,
+    0
+  );
+
+  const difference = theirTotal - myTotal;
+  const absoluteDifference = Math.abs(difference);
+  const comparisonBase = Math.max(myTotal, theirTotal, 1);
+  const percentDifference = absoluteDifference / comparisonBase;
+
+  elements.myTradeTotal.textContent = currency(myTotal);
+  elements.theirTradeTotal.textContent = currency(theirTotal);
+  elements.myTradeCount.textContent = countLabel(
+    myCards.reduce((sum, card) => sum + Math.max(1, Number(card.quantity || 1)), 0)
+  );
+  elements.theirTradeCount.textContent = countLabel(
+    otherTradeItems.reduce((sum, item) => sum + item.quantity, 0)
+  );
+
+  elements.tradeDifference.textContent =
+    `${currency(absoluteDifference)} difference`;
+
+  if (myTotal <= 0 || theirTotal <= 0) {
+    elements.tradeRating.textContent = "Add cards";
+    elements.tradeAdvice.textContent =
+      "Add at least one valued card to each side before judging the trade.";
+    return;
+  }
+
+  if (percentDifference <= 0.05) {
+    elements.tradeRating.textContent = "Very fair";
+    elements.tradeAdvice.textContent =
+      "The estimated values are within about 5%. Review condition, rarity, demand, and personal preference before agreeing.";
+  } else if (percentDifference <= 0.12) {
+    elements.tradeRating.textContent = "Close trade";
+    elements.tradeAdvice.textContent =
+      difference > 0
+        ? "The other side is slightly higher by estimated value. This may be favorable for Brenton, but verify grades and recent sales."
+        : "Brenton's side is slightly higher by estimated value. A small additional card or cash could balance the trade.";
+  } else if (percentDifference <= 0.25) {
+    elements.tradeRating.textContent = "Uneven";
+    elements.tradeAdvice.textContent =
+      difference > 0
+        ? "The other side is meaningfully higher by estimated value. Double-check that all incoming cards and conditions are entered correctly."
+        : "Brenton's side is meaningfully higher by estimated value. Consider asking for another card or cash.";
+  } else {
+    elements.tradeRating.textContent = "Very uneven";
+    elements.tradeAdvice.textContent =
+      difference > 0
+        ? "The other side is far higher by estimated value. This may indicate missing information or a highly favorable offer."
+        : "Brenton's side is far higher by estimated value. Do not proceed without reviewing recent comparable sales and condition.";
+  }
+}
+
+function tradeCardTotal(card) {
+  return Number(card.estimated_value || 0) *
+    Math.max(1, Number(card.quantity || 1));
+}
+
+function countLabel(count) {
+  return `${count} ${count === 1 ? "card" : "cards"}`;
+}
+
+function clearTrade() {
+  myTradeCardIds.clear();
+  otherTradeItems = [];
+  elements.tradeSearchInput.value = "";
+  elements.otherTradeForm.reset();
+  elements.otherTradeQtyInput.value = "1";
+  renderTradeBuilder();
+}
 
 function exportCollectionCsv() {
   try {
@@ -855,10 +1105,12 @@ function navigateTo(view) {
   const showHome = view === "home";
   const showAdd = view === "add";
   const showCollection = view === "collection" || view === "trash";
+  const showTrade = view === "trade";
 
   elements.homeView.classList.toggle("hidden", !showHome);
   elements.addView.classList.toggle("hidden", !showAdd);
   elements.collectionView.classList.toggle("hidden", !showCollection);
+  elements.tradeView.classList.toggle("hidden", !showTrade);
 
   for (const button of document.querySelectorAll(".nav-button")) {
     button.classList.toggle("active", button.dataset.view === view);
@@ -870,6 +1122,10 @@ function navigateTo(view) {
 
   if (view === "trash") {
     switchCollectionView("trash");
+  }
+
+  if (view === "trade") {
+    renderTradeBuilder();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });

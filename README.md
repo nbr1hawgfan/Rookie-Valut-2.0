@@ -1,4 +1,4 @@
-# Rookie Vault Backup + Export Upgrade
+# Rookie Vault Trade Builder Upgrade
 
 No Supabase migration is required.
 
@@ -15,21 +15,26 @@ Keep:
 
 ## Adds
 
-- CSV export of active cards
-- Complete JSON backup of active and trashed cards
-- Photo storage paths included in JSON
-- Readable collection summary text file
-- Last backup date stored on each device
-- Quantity-aware collection and sport values
-- PWA cache version `rookie-vault-v10`
+- Trade tab in bottom navigation
+- Select cards from Brenton's active collection
+- Add incoming cards manually
+- Quantity-aware values
+- Side-by-side totals
+- Difference calculation
+- Fairness rating
+- Clear-trade action
+- Mobile-friendly trade layout
+- PWA cache version `rookie-vault-v11`
 
-## Suggested test
+## Rating guide
 
-1. Download CSV and open it in Excel or Google Sheets.
-2. Download JSON and keep it as the full safety backup.
-3. Download the summary and review the totals.
-4. Confirm the Last Backup date updates.
+- Within 5%: Very fair
+- Within 12%: Close trade
+- Within 25%: Uneven
+- More than 25%: Very uneven
+
+This is guidance only. Condition, demand, grading, rarity, and recent comparable sales still matter.
 
 Suggested commit:
 
-`Add collection backup and export center`
+`Add trade builder and fairness rating`
