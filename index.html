@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=6">
+  <link rel="stylesheet" href="./css/app.css?v=7">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -167,10 +167,19 @@
         <div class="collection-header">
           <div>
             <p class="eyebrow accent-text">Collection</p>
-            <h2>Your cards</h2>
+            <h2 id="collectionTitle">Your cards</h2>
             <p id="resultCount" class="muted result-count">0 cards shown</p>
           </div>
-          <input id="searchInput" class="search" type="search" placeholder="Search player, set, brand...">
+
+          <div class="collection-tools">
+            <div class="view-toggle" role="group" aria-label="Collection view">
+              <button id="activeViewButton" class="filter-chip active" type="button">Collection</button>
+              <button id="trashViewButton" class="filter-chip" type="button">
+                Trash <span id="trashCount" class="count-bubble">0</span>
+              </button>
+            </div>
+            <input id="searchInput" class="search" type="search" placeholder="Search player, set, brand...">
+          </div>
         </div>
 
         <div class="filter-section">
@@ -236,9 +245,14 @@
           <div><dt>Notes</dt><dd id="detailNotes"></dd></div>
         </dl>
 
-        <div class="detail-actions">
+        <div id="activeDetailActions" class="detail-actions">
           <button id="detailEditButton" class="button" type="button">Edit card</button>
           <button id="detailDeleteButton" class="danger-button" type="button">Move to trash</button>
+        </div>
+
+        <div id="trashDetailActions" class="detail-actions hidden">
+          <button id="detailRestoreButton" class="button" type="button">Restore card</button>
+          <button id="detailPermanentDeleteButton" class="danger-button" type="button">Delete permanently</button>
         </div>
       </section>
     </div>
@@ -269,6 +283,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=6"></script>
+  <script type="module" src="./js/app.js?v=7"></script>
 </body>
 </html>

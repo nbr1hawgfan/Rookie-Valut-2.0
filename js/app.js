@@ -27,6 +27,10 @@ const elements = {
   saveCardButton: document.querySelector("#saveCardButton"),
   cardMessage: document.querySelector("#cardMessage"),
   searchInput: document.querySelector("#searchInput"),
+  collectionTitle: document.querySelector("#collectionTitle"),
+  activeViewButton: document.querySelector("#activeViewButton"),
+  trashViewButton: document.querySelector("#trashViewButton"),
+  trashCount: document.querySelector("#trashCount"),
   sportFilters: document.querySelector("#sportFilters"),
   statusFilters: document.querySelector("#statusFilters"),
   resultCount: document.querySelector("#resultCount"),
@@ -54,8 +58,12 @@ const elements = {
   detailStatus: document.querySelector("#detailStatus"),
   detailLocation: document.querySelector("#detailLocation"),
   detailNotes: document.querySelector("#detailNotes"),
+  activeDetailActions: document.querySelector("#activeDetailActions"),
+  trashDetailActions: document.querySelector("#trashDetailActions"),
   detailEditButton: document.querySelector("#detailEditButton"),
-  detailDeleteButton: document.querySelector("#detailDeleteButton")
+  detailDeleteButton: document.querySelector("#detailDeleteButton"),
+  detailRestoreButton: document.querySelector("#detailRestoreButton"),
+  detailPermanentDeleteButton: document.querySelector("#detailPermanentDeleteButton")
 };
 
 let supabase;
@@ -68,6 +76,7 @@ let previewObjectUrls = [];
 let selectedCard = null;
 let detailSide = "front";
 let editingCard = null;
+let collectionView = "active";
 
 applyInitialTheme();
 init();
@@ -105,6 +114,8 @@ function bindEvents() {
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
   elements.cardForm.addEventListener("submit", saveCard);
+  elements.activeViewButton.addEventListener("click", () => switchCollectionView("active"));
+  elements.trashViewButton.addEventListener("click", () => switchCollectionView("trash"));
   elements.cancelEditButton.addEventListener("click", cancelEdit);
   elements.cancelEditButtonBottom.addEventListener("click", cancelEdit);
   elements.searchInput.addEventListener("input", renderCards);
@@ -138,6 +149,8 @@ function bindEvents() {
   elements.showBackButton.addEventListener("click", () => setDetailSide("back"));
   elements.detailEditButton.addEventListener("click", beginEditSelectedCard);
   elements.detailDeleteButton.addEventListener("click", deleteSelectedCard);
+  elements.detailRestoreButton.addEventListener("click", restoreSelectedCard);
+  elements.detailPermanentDeleteButton.addEventListener("click", permanentlyDeleteSelectedCard);
 
   elements.cardDialog.addEventListener("click", event => {
     if (event.target === elements.cardDialog) closeCardDialog();
@@ -263,7 +276,6 @@ async function loadCards() {
     .from("cards")
     .select("*")
     .eq("collection_id", currentCollectionId)
-    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -475,15 +487,42 @@ function previewSelectedPhoto(input, imageElement) {
   imageElement.classList.remove("hidden");
 }
 
+
+function switchCollectionView(view) {
+  collectionView = view;
+
+  elements.activeViewButton.classList.toggle("active", view === "active");
+  elements.trashViewButton.classList.toggle("active", view === "trash");
+  elements.collectionTitle.textContent = view === "active" ? "Your cards" : "Trash";
+
+  if (view === "trash") {
+    activeSport = "all";
+    activeStatus = "all";
+
+    const firstSport = elements.sportFilters.querySelector('[data-sport="all"]');
+    const firstStatus = elements.statusFilters.querySelector('[data-status="all"]');
+    setActiveChip(elements.sportFilters, firstSport);
+    setActiveChip(elements.statusFilters, firstStatus);
+  }
+
+  renderCards();
+}
+
 function getFilteredCards() {
   const query = elements.searchInput.value.trim().toLowerCase();
 
   return cards.filter(card => {
+    const isDeleted = Boolean(card.deleted_at);
+    const matchesView =
+      collectionView === "trash" ? isDeleted : !isDeleted;
+
     const matchesSport =
+      collectionView === "trash" ||
       activeSport === "all" ||
       String(card.sport || "").toLowerCase() === activeSport.toLowerCase();
 
     const matchesStatus =
+      collectionView === "trash" ||
       activeStatus === "all" ||
       String(card.status || "").toLowerCase() === activeStatus.toLowerCase();
 
@@ -499,7 +538,7 @@ function getFilteredCards() {
       card.notes
     ].filter(Boolean).join(" ").toLowerCase();
 
-    return matchesSport && matchesStatus && haystack.includes(query);
+    return matchesView && matchesSport && matchesStatus && haystack.includes(query);
   });
 }
 
@@ -511,6 +550,10 @@ function renderCards() {
     const fragment = elements.cardTemplate.content.cloneNode(true);
     const cardElement = fragment.querySelector(".collection-card");
     const photo = fragment.querySelector(".card-photo");
+
+    if (card.deleted_at) {
+      cardElement.classList.add("is-deleted");
+    }
     const placeholder = fragment.querySelector(".card-photo-placeholder");
 
     if (card.front_photo_url) {
@@ -548,12 +591,22 @@ function renderCards() {
   elements.resultCount.textContent = `${filtered.length} ${noun} shown`;
   elements.emptyState.classList.toggle("hidden", filtered.length > 0);
 
-  elements.totalCards.textContent = cards.length;
+  const activeCards = cards.filter(card => !card.deleted_at);
+  const deletedCards = cards.filter(card => card.deleted_at);
+
+  elements.totalCards.textContent = activeCards.length;
   elements.totalValue.textContent = currency(
-    cards.reduce((sum, card) => sum + Number(card.estimated_value || 0), 0)
+    activeCards.reduce((sum, card) => sum + Number(card.estimated_value || 0), 0)
   );
   elements.tradeCount.textContent =
-    cards.filter(card => card.status === "trade").length;
+    activeCards.filter(card => card.status === "trade").length;
+  elements.trashCount.textContent = deletedCards.length;
+
+  elements.sportFilters.classList.toggle("hidden", collectionView === "trash");
+  elements.statusFilters.classList.toggle("hidden", collectionView === "trash");
+  for (const section of document.querySelectorAll(".filter-section")) {
+    section.classList.toggle("hidden", collectionView === "trash");
+  }
 }
 
 function openCardDialog(card) {
@@ -571,6 +624,10 @@ function openCardDialog(card) {
   elements.detailStatus.textContent = String(card.status || "keep").replace("-", " ");
   elements.detailLocation.textContent = card.storage_location || "Not specified";
   elements.detailNotes.textContent = card.notes || "No notes";
+
+  const isDeleted = Boolean(card.deleted_at);
+  elements.activeDetailActions.classList.toggle("hidden", isDeleted);
+  elements.trashDetailActions.classList.toggle("hidden", !isDeleted);
 
   setDetailSide("front");
   elements.cardDialog.showModal();
@@ -687,6 +744,67 @@ async function deleteSelectedCard() {
 
   closeCardDialog();
   await loadCards();
+}
+
+
+async function restoreSelectedCard() {
+  if (!selectedCard) return;
+
+  const { error } = await supabase
+    .from("cards")
+    .update({ deleted_at: null })
+    .eq("id", selectedCard.id)
+    .eq("collection_id", currentCollectionId);
+
+  if (error) {
+    console.error("Card restore failed:", error);
+    setCardMessage("Could not restore the card.");
+    return;
+  }
+
+  closeCardDialog();
+  await loadCards();
+  setCardMessage("Card restored to the collection.");
+}
+
+async function permanentlyDeleteSelectedCard() {
+  if (!selectedCard) return;
+
+  const confirmed = window.confirm(
+    "Permanently delete this card and its photos? This cannot be undone."
+  );
+  if (!confirmed) return;
+
+  const photoPaths = [
+    selectedCard.front_photo_path,
+    selectedCard.back_photo_path
+  ].filter(Boolean);
+
+  const { error } = await supabase
+    .from("cards")
+    .delete()
+    .eq("id", selectedCard.id)
+    .eq("collection_id", currentCollectionId);
+
+  if (error) {
+    console.error("Permanent delete failed:", error);
+    setCardMessage("Could not permanently delete the card.");
+    return;
+  }
+
+  if (photoPaths.length) {
+    const { error: storageError } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .remove(photoPaths);
+
+    if (storageError) {
+      console.error("Photo cleanup failed:", storageError);
+    }
+  }
+
+  closeCardDialog();
+  await loadCards();
+  setCardMessage("Card permanently deleted.");
 }
 
 function resetCardForm() {

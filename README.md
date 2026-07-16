@@ -1,4 +1,4 @@
-# Rookie Vault Edit + Add Photos Upgrade
+# Rookie Vault Trash + Restore Upgrade
 
 Replace these files:
 
@@ -11,25 +11,25 @@ Do not replace or delete:
 
 - `js/config.js`
 
-## What this adds
+## Adds
 
-- Edit button inside the card detail view
-- Existing card details load into the form
-- Add photos to cards that previously had none
-- Replace only the front photo, only the back photo, or both
-- Existing photos remain when no replacement is selected
-- Old photo files are removed after a successful replacement
-- Cancel editing without changing the card
-- PWA cache version `rookie-vault-v6`
+- Collection / Trash toggle
+- Deleted-card count
+- Restore deleted cards
+- Permanently delete cards
+- Permanently deleting a card also removes its stored photos
+- Dashboard totals exclude trashed cards
+- Search works inside Trash
+- PWA cache version `rookie-vault-v7`
 
-## Test the original card
+## Test
 
-1. Tap the first test card.
-2. Tap **Edit card**.
-3. Choose a front and/or back image.
-4. Tap **Update card**.
-5. Open the card again and switch between Front and Back.
+1. Open a card.
+2. Tap **Move to trash**.
+3. Open **Trash**.
+4. Open the card and tap **Restore card**.
+5. Move it to trash again and test permanent delete only with a disposable test card.
 
 Suggested commit:
 
-`Add card editing and photo replacement`
+`Add trash restore and permanent delete`

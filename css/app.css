@@ -528,3 +528,69 @@ input:focus, select:focus, textarea:focus {
   font-size: .8rem;
   font-weight: 650;
 }
+
+
+/* Trash and restore upgrade — v7 */
+
+.collection-tools {
+  display: grid;
+  justify-items: end;
+  gap: .75rem;
+}
+
+.view-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.count-bubble {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  margin-left: .35rem;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.filter-chip.active .count-bubble {
+  background: rgba(255,255,255,.18);
+}
+
+.trash-banner {
+  margin: 0 0 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+  border-radius: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  font-weight: 700;
+}
+
+.collection-card.is-deleted {
+  opacity: .78;
+  border-style: dashed;
+}
+
+.collection-card.is-deleted .card-photo-wrap {
+  filter: grayscale(.5);
+}
+
+@media (max-width: 760px) {
+  .collection-tools {
+    justify-items: stretch;
+  }
+
+  .view-toggle {
+    width: 100%;
+  }
+
+  .view-toggle .filter-chip {
+    flex: 1 1 0;
+  }
+}
