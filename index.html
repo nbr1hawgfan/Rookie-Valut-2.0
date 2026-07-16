@@ -12,10 +12,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <p class="eyebrow">Family Card Collection</p>
-      <h1>Rookie Vault</h1>
-    </div>
+    <div><p class="eyebrow">Family Card Collection</p><h1>Rookie Vault</h1></div>
     <button id="logoutButton" class="button button-secondary hidden" type="button">Sign out</button>
   </header>
 
@@ -28,131 +25,67 @@
     <section id="authPanel" class="panel auth-panel">
       <h2>Open your vault</h2>
       <p class="muted">Sign in with your own account. No shared password is stored in GitHub.</p>
-
       <form id="authForm" class="stack">
-        <label>
-          Email
-          <input id="emailInput" type="email" autocomplete="email" required>
-        </label>
-
-        <label>
-          Password
-          <input id="passwordInput" type="password" autocomplete="current-password" minlength="8" required>
-        </label>
-
+        <label>Email<input id="emailInput" type="email" autocomplete="email" required></label>
+        <label>Password<input id="passwordInput" type="password" autocomplete="current-password" minlength="8" required></label>
         <div class="button-row">
           <button class="button" type="submit">Sign in</button>
           <button id="signupButton" class="button button-secondary" type="button">Create account</button>
         </div>
       </form>
-
       <p id="authMessage" class="message" aria-live="polite"></p>
     </section>
 
     <section id="appPanel" class="hidden">
       <section class="stats-grid">
-        <article class="stat-card">
-          <span>Total cards</span>
-          <strong id="totalCards">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Estimated value</span>
-          <strong id="totalValue">$0.00</strong>
-        </article>
-        <article class="stat-card">
-          <span>For trade</span>
-          <strong id="tradeCount">0</strong>
-        </article>
+        <article class="stat-card"><span>Total cards</span><strong id="totalCards">0</strong></article>
+        <article class="stat-card"><span>Estimated value</span><strong id="totalValue">$0.00</strong></article>
+        <article class="stat-card"><span>For trade</span><strong id="tradeCount">0</strong></article>
       </section>
 
       <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Add to collection</p>
-            <h2>New card</h2>
-          </div>
-        </div>
-
+        <div class="section-heading"><div><p class="eyebrow">Add to collection</p><h2>New card</h2></div></div>
         <form id="cardForm" class="form-grid">
-          <label>
-            Player
-            <input id="playerInput" required maxlength="120">
-          </label>
+          <label>Player<input id="playerInput" required maxlength="120"></label>
+          <label>Sport<select id="sportInput"><option>Baseball</option><option>Basketball</option><option>Football</option><option>Hockey</option><option>Soccer</option><option>Other</option></select></label>
+          <label>Year<input id="yearInput" inputmode="numeric" maxlength="4" placeholder="2024"></label>
+          <label>Brand<input id="brandInput" maxlength="100" placeholder="Topps, Panini..."></label>
+          <label>Set<input id="setInput" maxlength="120"></label>
+          <label>Card number<input id="cardNumberInput" maxlength="40"></label>
+          <label>Estimated value<input id="valueInput" type="number" min="0" step="0.01" inputmode="decimal"></label>
+          <label>Status<select id="statusInput"><option value="keep">Keep</option><option value="trade">For trade</option><option value="duplicate">Duplicate</option><option value="want">Want list</option></select></label>
 
-          <label>
-            Sport
-            <select id="sportInput">
-              <option>Baseball</option>
-              <option>Basketball</option>
-              <option>Football</option>
-              <option>Hockey</option>
-              <option>Soccer</option>
-              <option>Other</option>
-            </select>
-          </label>
+          <fieldset class="wide photo-fieldset">
+            <legend>Card photos</legend>
+            <p class="muted photo-help">Take a photo or choose one from the phone. Photos are resized before upload.</p>
+            <div class="photo-input-grid">
+              <label class="photo-picker">
+                <span>Front photo</span>
+                <input id="frontPhotoInput" type="file" accept="image/*" capture="environment">
+                <span class="photo-action">Take or choose front</span>
+                <img id="frontPreview" class="photo-preview hidden" alt="Front photo preview">
+              </label>
+              <label class="photo-picker">
+                <span>Back photo</span>
+                <input id="backPhotoInput" type="file" accept="image/*" capture="environment">
+                <span class="photo-action">Take or choose back</span>
+                <img id="backPreview" class="photo-preview hidden" alt="Back photo preview">
+              </label>
+            </div>
+          </fieldset>
 
-          <label>
-            Year
-            <input id="yearInput" inputmode="numeric" maxlength="4" placeholder="2024">
-          </label>
-
-          <label>
-            Brand
-            <input id="brandInput" maxlength="100" placeholder="Topps, Panini...">
-          </label>
-
-          <label>
-            Set
-            <input id="setInput" maxlength="120">
-          </label>
-
-          <label>
-            Card number
-            <input id="cardNumberInput" maxlength="40">
-          </label>
-
-          <label>
-            Estimated value
-            <input id="valueInput" type="number" min="0" step="0.01" inputmode="decimal">
-          </label>
-
-          <label>
-            Status
-            <select id="statusInput">
-              <option value="keep">Keep</option>
-              <option value="trade">For trade</option>
-              <option value="duplicate">Duplicate</option>
-              <option value="want">Want list</option>
-            </select>
-          </label>
-
-          <label class="wide">
-            Storage location
-            <input id="locationInput" maxlength="120" placeholder="Binder 1, Box A...">
-          </label>
-
-          <label class="wide">
-            Notes
-            <textarea id="notesInput" rows="3" maxlength="1000"></textarea>
-          </label>
-
-          <div class="wide">
-            <button class="button" type="submit">Save card</button>
-          </div>
+          <label class="wide">Storage location<input id="locationInput" maxlength="120" placeholder="Binder 1, Box A..."></label>
+          <label class="wide">Notes<textarea id="notesInput" rows="3" maxlength="1000"></textarea></label>
+          <div class="wide"><button id="saveCardButton" class="button" type="submit">Save card</button></div>
         </form>
-
         <p id="cardMessage" class="message" aria-live="polite"></p>
       </section>
 
       <section class="panel">
         <div class="section-heading">
-          <div>
-            <p class="eyebrow">Collection</p>
-            <h2>Your cards</h2>
-          </div>
+          <div><p class="eyebrow">Collection</p><h2>Your cards</h2></div>
           <input id="searchInput" class="search" type="search" placeholder="Search player, set, brand...">
         </div>
-
         <div id="cardsGrid" class="cards-grid"></div>
         <p id="emptyState" class="empty-state">No cards yet. Add the first one above.</p>
       </section>
@@ -161,19 +94,12 @@
 
   <template id="cardTemplate">
     <article class="collection-card">
+      <div class="card-photo-wrap"><img class="card-photo hidden" alt=""><div class="card-photo-placeholder">No front photo</div></div>
       <div class="collection-card__body">
-        <div class="collection-card__heading">
-          <div>
-            <p class="card-meta"></p>
-            <h3 class="card-player"></h3>
-          </div>
-          <span class="card-value"></span>
-        </div>
-        <p class="card-details"></p>
-        <p class="card-location muted"></p>
-        <span class="badge card-status"></span>
+        <div class="collection-card__heading"><div><p class="card-meta"></p><h3 class="card-player"></h3></div><span class="card-value"></span></div>
+        <p class="card-details"></p><p class="card-location muted"></p><span class="badge card-status"></span>
       </div>
-      <button class="delete-button" type="button">Delete</button>
+      <button class="delete-button" type="button">Move to trash</button>
     </article>
   </template>
 
