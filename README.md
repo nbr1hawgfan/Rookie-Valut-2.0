@@ -1,12 +1,8 @@
-# Rookie Vault Collector Details Upgrade
+# Rookie Vault Backup + Export Upgrade
 
-## First: run the database migration
+No Supabase migration is required.
 
-In Supabase SQL Editor, run:
-
-`supabase/collector-details-migration.sql`
-
-## Then replace these files
+Replace:
 
 - `index.html`
 - `css/app.css`
@@ -19,25 +15,21 @@ Keep:
 
 ## Adds
 
-- Rookie card flag
-- Autograph flag
-- Patch / memorabilia flag
-- Serial numbered cards
-- Serial number and print run
-- Parallel / variation
-- Quantity
-- Raw or graded status
-- PSA, BGS, SGC, CGC or Other grading company
-- Grade
-- Purchase price
-- Purchase date
-- Collector badges on collection cards
-- Collector badges in full card details
-- Dashboard counts for rookie, autograph, graded and numbered cards
-- Collection health counts for missing values and missing front photos
-- Full edit support for all new fields
-- PWA cache version `rookie-vault-v9`
+- CSV export of active cards
+- Complete JSON backup of active and trashed cards
+- Photo storage paths included in JSON
+- Readable collection summary text file
+- Last backup date stored on each device
+- Quantity-aware collection and sport values
+- PWA cache version `rookie-vault-v10`
+
+## Suggested test
+
+1. Download CSV and open it in Excel or Google Sheets.
+2. Download JSON and keep it as the full safety backup.
+3. Download the summary and review the totals.
+4. Confirm the Last Backup date updates.
 
 Suggested commit:
 
-`Add collector fields badges and statistics`
+`Add collection backup and export center`

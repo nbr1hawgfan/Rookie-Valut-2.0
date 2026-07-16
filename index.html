@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=9">
+  <link rel="stylesheet" href="./css/app.css?v=10">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -116,6 +116,48 @@
           </div>
           <div id="recentCardsGrid" class="recent-cards-grid"></div>
           <p id="recentEmptyState" class="empty-state">No cards yet.</p>
+        </section>
+
+        <section class="panel backup-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Safety first</p>
+              <h2>Backup Center</h2>
+              <p class="muted">Download copies of Brenton's collection to keep outside the app.</p>
+            </div>
+            <div class="backup-status">
+              <span>Last backup</span>
+              <strong id="lastBackupText">Never</strong>
+            </div>
+          </div>
+
+          <div class="backup-grid">
+            <article class="backup-card">
+              <div>
+                <h3>CSV Collection</h3>
+                <p>Spreadsheet-friendly export of all active cards and collector details.</p>
+              </div>
+              <button id="exportCsvButton" class="button" type="button">Download CSV</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Complete JSON Backup</h3>
+                <p>Full active and trashed card records, including photo storage paths.</p>
+              </div>
+              <button id="exportJsonButton" class="button" type="button">Download JSON</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Collection Summary</h3>
+                <p>A readable text report with totals, values, sports and collector highlights.</p>
+              </div>
+              <button id="exportSummaryButton" class="button" type="button">Download Summary</button>
+            </article>
+          </div>
+
+          <p id="backupMessage" class="message" aria-live="polite"></p>
         </section>
       </section>
 
@@ -438,6 +480,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=9"></script>
+  <script type="module" src="./js/app.js?v=10"></script>
 </body>
 </html>

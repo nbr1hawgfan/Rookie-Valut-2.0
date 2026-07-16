@@ -858,3 +858,76 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* Backup Center — v10 */
+
+.backup-status {
+  min-width: 150px;
+  padding: .75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-align: right;
+}
+
+.backup-status span {
+  display: block;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.backup-status strong {
+  display: block;
+  margin-top: .25rem;
+}
+
+.backup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .85rem;
+}
+
+.backup-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 210px;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface-2);
+}
+
+.backup-card h3 {
+  margin-bottom: .4rem;
+}
+
+.backup-card p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.backup-card .button {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .backup-status {
+    width: 100%;
+    text-align: left;
+  }
+
+  .backup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-card {
+    min-height: 0;
+  }
+}

@@ -5,6 +5,7 @@ const MAX_IMAGE_EDGE = 1800;
 const JPEG_QUALITY = 0.82;
 const SIGNED_URL_SECONDS = 3600;
 const THEME_KEY = "rookie-vault-theme";
+const LAST_BACKUP_KEY = "rookie-vault-last-backup";
 
 const elements = {
   setupPanel: document.querySelector("#setupPanel"),
@@ -17,6 +18,11 @@ const elements = {
   viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
   recentCardsGrid: document.querySelector("#recentCardsGrid"),
   recentEmptyState: document.querySelector("#recentEmptyState"),
+  exportCsvButton: document.querySelector("#exportCsvButton"),
+  exportJsonButton: document.querySelector("#exportJsonButton"),
+  exportSummaryButton: document.querySelector("#exportSummaryButton"),
+  lastBackupText: document.querySelector("#lastBackupText"),
+  backupMessage: document.querySelector("#backupMessage"),
   authForm: document.querySelector("#authForm"),
   signupButton: document.querySelector("#signupButton"),
   logoutButton: document.querySelector("#logoutButton"),
@@ -153,6 +159,10 @@ function bindEvents() {
 
   elements.homeAddButton.addEventListener("click", () => navigateTo("add"));
   elements.viewAllCardsButton.addEventListener("click", () => navigateTo("collection"));
+  elements.exportCsvButton.addEventListener("click", exportCollectionCsv);
+  elements.exportJsonButton.addEventListener("click", exportCollectionJson);
+  elements.exportSummaryButton.addEventListener("click", exportCollectionSummary);
+  updateLastBackupDisplay();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -555,6 +565,290 @@ function previewSelectedPhoto(input, imageElement) {
 
 
 
+
+function exportCollectionCsv() {
+  try {
+    const activeCards = cards.filter(card => !card.deleted_at);
+
+    const columns = [
+      ["Player", "player_name"],
+      ["Sport", "sport"],
+      ["Year", "card_year"],
+      ["Brand", "brand"],
+      ["Set", "set_name"],
+      ["Card Number", "card_number"],
+      ["Parallel", "parallel_name"],
+      ["Rookie", "is_rookie"],
+      ["Autograph", "is_autograph"],
+      ["Patch or Memorabilia", "is_memorabilia"],
+      ["Serial Numbered", "is_numbered"],
+      ["Serial Number", "serial_number"],
+      ["Print Run", "print_run"],
+      ["Condition", "card_condition"],
+      ["Grading Company", "grading_company"],
+      ["Grade", "grade"],
+      ["Quantity", "quantity"],
+      ["Status", "status"],
+      ["Estimated Value", "estimated_value"],
+      ["Purchase Price", "purchase_price"],
+      ["Purchase Date", "purchase_date"],
+      ["Storage Location", "storage_location"],
+      ["Notes", "notes"],
+      ["Front Photo Path", "front_photo_path"],
+      ["Back Photo Path", "back_photo_path"],
+      ["Created", "created_at"],
+      ["Updated", "updated_at"]
+    ];
+
+    const rows = [
+      columns.map(([label]) => csvCell(label)).join(","),
+      ...activeCards.map(card =>
+        columns.map(([, key]) => csvCell(csvValue(card[key]))).join(",")
+      )
+    ];
+
+    downloadTextFile(
+      buildBackupFilename("collection", "csv"),
+      "\ufeff" + rows.join("\r\n"),
+      "text/csv;charset=utf-8"
+    );
+
+    recordBackup("CSV collection downloaded.");
+  } catch (error) {
+    console.error("CSV export failed:", error);
+    setBackupMessage("Could not create the CSV backup.");
+  }
+}
+
+function exportCollectionJson() {
+  try {
+    const activeCards = cards.filter(card => !card.deleted_at);
+    const trashedCards = cards.filter(card => card.deleted_at);
+
+    const backup = {
+      app: "Rookie Vault",
+      format_version: 1,
+      exported_at: new Date().toISOString(),
+      collection_id: currentCollectionId,
+      summary: buildCollectionSummaryObject(activeCards, trashedCards),
+      active_cards: activeCards.map(cleanCardForBackup),
+      trashed_cards: trashedCards.map(cleanCardForBackup)
+    };
+
+    downloadTextFile(
+      buildBackupFilename("complete-backup", "json"),
+      JSON.stringify(backup, null, 2),
+      "application/json;charset=utf-8"
+    );
+
+    recordBackup("Complete JSON backup downloaded.");
+  } catch (error) {
+    console.error("JSON export failed:", error);
+    setBackupMessage("Could not create the JSON backup.");
+  }
+}
+
+function exportCollectionSummary() {
+  try {
+    const activeCards = cards.filter(card => !card.deleted_at);
+    const trashedCards = cards.filter(card => card.deleted_at);
+    const summary = buildCollectionSummaryObject(activeCards, trashedCards);
+
+    const lines = [
+      "ROOKIE VAULT COLLECTION SUMMARY",
+      "================================",
+      `Generated: ${new Date().toLocaleString("en-US")}`,
+      "",
+      "COLLECTION TOTALS",
+      `Active cards: ${summary.active_cards}`,
+      `Total quantity: ${summary.total_quantity}`,
+      `Estimated value: ${currency(summary.estimated_value)}`,
+      `Purchase cost recorded: ${currency(summary.purchase_cost)}`,
+      `For trade: ${summary.for_trade}`,
+      `Wishlist: ${summary.wishlist}`,
+      `Trash: ${summary.trashed_cards}`,
+      "",
+      "COLLECTOR HIGHLIGHTS",
+      `Rookie cards: ${summary.rookie_cards}`,
+      `Autographs: ${summary.autographs}`,
+      `Patch / memorabilia: ${summary.memorabilia_cards}`,
+      `Numbered cards: ${summary.numbered_cards}`,
+      `Graded cards: ${summary.graded_cards}`,
+      `Cards missing a value: ${summary.missing_values}`,
+      `Cards missing a front photo: ${summary.missing_front_photos}`,
+      "",
+      "BY SPORT",
+      ...Object.entries(summary.by_sport)
+        .sort((a, b) => b[1].cards - a[1].cards)
+        .map(([sport, data]) =>
+          `${sport}: ${data.cards} cards, quantity ${data.quantity}, ${currency(data.value)}`
+        ),
+      "",
+      "BY STATUS",
+      ...Object.entries(summary.by_status)
+        .sort((a, b) => b[1] - a[1])
+        .map(([status, count]) => `${titleCase(status)}: ${count}`),
+      "",
+      "Generated by Rookie Vault"
+    ];
+
+    downloadTextFile(
+      buildBackupFilename("summary", "txt"),
+      lines.join("\r\n"),
+      "text/plain;charset=utf-8"
+    );
+
+    recordBackup("Collection summary downloaded.");
+  } catch (error) {
+    console.error("Summary export failed:", error);
+    setBackupMessage("Could not create the collection summary.");
+  }
+}
+
+function buildCollectionSummaryObject(activeCards, trashedCards) {
+  const bySport = {};
+  const byStatus = {};
+
+  for (const card of activeCards) {
+    const sport = card.sport || "Other";
+    const quantity = Math.max(1, Number(card.quantity || 1));
+    const value = Number(card.estimated_value || 0) * quantity;
+
+    if (!bySport[sport]) {
+      bySport[sport] = { cards: 0, quantity: 0, value: 0 };
+    }
+
+    bySport[sport].cards += 1;
+    bySport[sport].quantity += quantity;
+    bySport[sport].value += value;
+
+    const status = card.status || "keep";
+    byStatus[status] = (byStatus[status] || 0) + 1;
+  }
+
+  return {
+    active_cards: activeCards.length,
+    total_quantity: activeCards.reduce(
+      (sum, card) => sum + Math.max(1, Number(card.quantity || 1)),
+      0
+    ),
+    estimated_value: activeCards.reduce(
+      (sum, card) =>
+        sum +
+        Number(card.estimated_value || 0) *
+          Math.max(1, Number(card.quantity || 1)),
+      0
+    ),
+    purchase_cost: activeCards.reduce(
+      (sum, card) =>
+        sum +
+        Number(card.purchase_price || 0) *
+          Math.max(1, Number(card.quantity || 1)),
+      0
+    ),
+    for_trade: activeCards.filter(card => card.status === "trade").length,
+    wishlist: activeCards.filter(card => card.status === "want").length,
+    trashed_cards: trashedCards.length,
+    rookie_cards: activeCards.filter(card => card.is_rookie).length,
+    autographs: activeCards.filter(card => card.is_autograph).length,
+    memorabilia_cards: activeCards.filter(card => card.is_memorabilia).length,
+    numbered_cards: activeCards.filter(card => card.is_numbered).length,
+    graded_cards: activeCards.filter(card => card.card_condition === "graded").length,
+    missing_values: activeCards.filter(
+      card => Number(card.estimated_value || 0) <= 0
+    ).length,
+    missing_front_photos: activeCards.filter(
+      card => !card.front_photo_path
+    ).length,
+    by_sport: bySport,
+    by_status: byStatus
+  };
+}
+
+function cleanCardForBackup(card) {
+  const {
+    front_photo_url,
+    back_photo_url,
+    ...databaseFields
+  } = card;
+
+  return databaseFields;
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function csvValue(value) {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return value ?? "";
+}
+
+function buildBackupFilename(label, extension) {
+  const stamp = new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replaceAll(":", "-");
+
+  return `rookie-vault-${label}-${stamp}.${extension}`;
+}
+
+function downloadTextFile(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function recordBackup(message) {
+  const now = new Date().toISOString();
+  localStorage.setItem(LAST_BACKUP_KEY, now);
+  updateLastBackupDisplay();
+  setBackupMessage(message);
+}
+
+function updateLastBackupDisplay() {
+  const stored = localStorage.getItem(LAST_BACKUP_KEY);
+
+  if (!stored) {
+    elements.lastBackupText.textContent = "Never";
+    return;
+  }
+
+  const date = new Date(stored);
+
+  if (Number.isNaN(date.getTime())) {
+    elements.lastBackupText.textContent = "Unknown";
+    return;
+  }
+
+  elements.lastBackupText.textContent = date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function setBackupMessage(message) {
+  elements.backupMessage.textContent = message;
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, character => character.toUpperCase());
+}
+
 function navigateTo(view) {
   activeAppView = view;
 
@@ -742,7 +1036,13 @@ function renderCards() {
 
   elements.totalCards.textContent = activeCards.length;
   elements.totalValue.textContent = currency(
-    activeCards.reduce((sum, card) => sum + Number(card.estimated_value || 0), 0)
+    activeCards.reduce(
+      (sum, card) =>
+        sum +
+        Number(card.estimated_value || 0) *
+          Math.max(1, Number(card.quantity || 1)),
+      0
+    )
   );
   elements.tradeCount.textContent =
     activeCards.filter(card => card.status === "trade").length;
