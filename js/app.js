@@ -4,6 +4,7 @@ const PHOTO_BUCKET = "card-photos";
 const MAX_IMAGE_EDGE = 1800;
 const JPEG_QUALITY = 0.82;
 const SIGNED_URL_SECONDS = 3600;
+const THEME_KEY = "rookie-vault-theme";
 
 const elements = {
   setupPanel: document.querySelector("#setupPanel"),
@@ -12,6 +13,8 @@ const elements = {
   authForm: document.querySelector("#authForm"),
   signupButton: document.querySelector("#signupButton"),
   logoutButton: document.querySelector("#logoutButton"),
+  themeToggle: document.querySelector("#themeToggle"),
+  themeIcon: document.querySelector("#themeIcon"),
   authMessage: document.querySelector("#authMessage"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -31,7 +34,22 @@ const elements = {
   frontPhotoInput: document.querySelector("#frontPhotoInput"),
   backPhotoInput: document.querySelector("#backPhotoInput"),
   frontPreview: document.querySelector("#frontPreview"),
-  backPreview: document.querySelector("#backPreview")
+  backPreview: document.querySelector("#backPreview"),
+  cardDialog: document.querySelector("#cardDialog"),
+  closeDialogButton: document.querySelector("#closeDialogButton"),
+  detailPhoto: document.querySelector("#detailPhoto"),
+  detailPhotoPlaceholder: document.querySelector("#detailPhotoPlaceholder"),
+  showFrontButton: document.querySelector("#showFrontButton"),
+  showBackButton: document.querySelector("#showBackButton"),
+  detailMeta: document.querySelector("#detailMeta"),
+  detailPlayer: document.querySelector("#detailPlayer"),
+  detailSet: document.querySelector("#detailSet"),
+  detailValue: document.querySelector("#detailValue"),
+  detailSport: document.querySelector("#detailSport"),
+  detailStatus: document.querySelector("#detailStatus"),
+  detailLocation: document.querySelector("#detailLocation"),
+  detailNotes: document.querySelector("#detailNotes"),
+  detailDeleteButton: document.querySelector("#detailDeleteButton")
 };
 
 let supabase;
@@ -41,7 +59,10 @@ let currentUserId = null;
 let activeSport = "all";
 let activeStatus = "all";
 let previewObjectUrls = [];
+let selectedCard = null;
+let detailSide = "front";
 
+applyInitialTheme();
 init();
 
 async function init() {
@@ -75,6 +96,7 @@ function bindEvents() {
   elements.authForm.addEventListener("submit", signIn);
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
+  elements.themeToggle.addEventListener("click", toggleTheme);
   elements.cardForm.addEventListener("submit", saveCard);
   elements.searchInput.addEventListener("input", renderCards);
 
@@ -97,9 +119,43 @@ function bindEvents() {
   elements.frontPhotoInput.addEventListener("change", () =>
     previewSelectedPhoto(elements.frontPhotoInput, elements.frontPreview)
   );
+
   elements.backPhotoInput.addEventListener("change", () =>
     previewSelectedPhoto(elements.backPhotoInput, elements.backPreview)
   );
+
+  elements.closeDialogButton.addEventListener("click", closeCardDialog);
+  elements.showFrontButton.addEventListener("click", () => setDetailSide("front"));
+  elements.showBackButton.addEventListener("click", () => setDetailSide("back"));
+  elements.detailDeleteButton.addEventListener("click", deleteSelectedCard);
+
+  elements.cardDialog.addEventListener("click", event => {
+    if (event.target === elements.cardDialog) closeCardDialog();
+  });
+}
+
+function applyInitialTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const theme = saved || "dark";
+  applyTheme(theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.dataset.theme || "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem(THEME_KEY, theme);
+  elements.themeIcon.textContent = theme === "dark" ? "☀" : "☾";
+  elements.themeToggle.setAttribute(
+    "aria-label",
+    theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+  );
+
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute("content", theme === "dark" ? "#171317" : "#541923");
 }
 
 function setActiveChip(container, activeButton) {
@@ -220,6 +276,7 @@ async function attachSignedPhotoUrls(cardRows) {
     if (card.front_photo_path) {
       card.front_photo_url = await createSignedPhotoUrl(card.front_photo_path);
     }
+
     if (card.back_photo_path) {
       card.back_photo_url = await createSignedPhotoUrl(card.back_photo_path);
     }
@@ -301,6 +358,7 @@ async function saveCard(event) {
       const { error: cleanupError } = await supabase.storage
         .from(PHOTO_BUCKET)
         .remove(uploadedPaths);
+
       if (cleanupError) console.error("Could not clean up uploaded photos:", cleanupError);
     }
   } finally {
@@ -371,23 +429,6 @@ function previewSelectedPhoto(input, imageElement) {
   imageElement.classList.remove("hidden");
 }
 
-async function softDeleteCard(cardId) {
-  if (!window.confirm("Move this card to the trash?")) return;
-
-  const { error } = await supabase
-    .from("cards")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", cardId);
-
-  if (error) {
-    console.error("Card delete failed:", error);
-    setCardMessage("Could not remove the card.");
-    return;
-  }
-
-  await loadCards();
-}
-
 function getFilteredCards() {
   const query = elements.searchInput.value.trim().toLowerCase();
 
@@ -412,8 +453,7 @@ function getFilteredCards() {
       card.notes
     ].filter(Boolean).join(" ").toLowerCase();
 
-    const matchesSearch = haystack.includes(query);
-    return matchesSport && matchesStatus && matchesSearch;
+    return matchesSport && matchesStatus && haystack.includes(query);
   });
 }
 
@@ -423,6 +463,7 @@ function renderCards() {
 
   for (const card of filtered) {
     const fragment = elements.cardTemplate.content.cloneNode(true);
+    const cardElement = fragment.querySelector(".collection-card");
     const photo = fragment.querySelector(".card-photo");
     const placeholder = fragment.querySelector(".card-photo-placeholder");
 
@@ -445,10 +486,14 @@ function renderCards() {
     fragment.querySelector(".card-sport").textContent = card.sport || "Other";
     fragment.querySelector(".card-status").textContent =
       String(card.status || "keep").replace("-", " ");
-    fragment.querySelector(".delete-button").addEventListener(
-      "click",
-      () => softDeleteCard(card.id)
-    );
+
+    cardElement.addEventListener("click", () => openCardDialog(card));
+    cardElement.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCardDialog(card);
+      }
+    });
 
     elements.cardsGrid.append(fragment);
   }
@@ -463,6 +508,76 @@ function renderCards() {
   );
   elements.tradeCount.textContent =
     cards.filter(card => card.status === "trade").length;
+}
+
+function openCardDialog(card) {
+  selectedCard = card;
+  detailSide = "front";
+
+  elements.detailMeta.textContent =
+    [card.card_year, card.brand].filter(Boolean).join(" • ");
+  elements.detailPlayer.textContent = card.player_name;
+  elements.detailSet.textContent =
+    [card.set_name, card.card_number ? `#${card.card_number}` : null]
+      .filter(Boolean).join(" • ") || "No set details";
+  elements.detailValue.textContent = currency(card.estimated_value);
+  elements.detailSport.textContent = card.sport || "Other";
+  elements.detailStatus.textContent = String(card.status || "keep").replace("-", " ");
+  elements.detailLocation.textContent = card.storage_location || "Not specified";
+  elements.detailNotes.textContent = card.notes || "No notes";
+
+  setDetailSide("front");
+  elements.cardDialog.showModal();
+}
+
+function closeCardDialog() {
+  if (elements.cardDialog.open) elements.cardDialog.close();
+  selectedCard = null;
+}
+
+function setDetailSide(side) {
+  detailSide = side;
+
+  elements.showFrontButton.classList.toggle("active", side === "front");
+  elements.showBackButton.classList.toggle("active", side === "back");
+
+  const url =
+    side === "front"
+      ? selectedCard?.front_photo_url
+      : selectedCard?.back_photo_url;
+
+  if (url) {
+    elements.detailPhoto.src = url;
+    elements.detailPhoto.alt =
+      `${side === "front" ? "Front" : "Back"} of ${selectedCard.player_name} card`;
+    elements.detailPhoto.classList.remove("hidden");
+    elements.detailPhotoPlaceholder.classList.add("hidden");
+  } else {
+    elements.detailPhoto.removeAttribute("src");
+    elements.detailPhoto.classList.add("hidden");
+    elements.detailPhotoPlaceholder.textContent =
+      `No ${side} photo available`;
+    elements.detailPhotoPlaceholder.classList.remove("hidden");
+  }
+}
+
+async function deleteSelectedCard() {
+  if (!selectedCard) return;
+  if (!window.confirm("Move this card to the trash?")) return;
+
+  const { error } = await supabase
+    .from("cards")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", selectedCard.id);
+
+  if (error) {
+    console.error("Card delete failed:", error);
+    setCardMessage("Could not remove the card.");
+    return;
+  }
+
+  closeCardDialog();
+  await loadCards();
 }
 
 function resetCardForm() {
