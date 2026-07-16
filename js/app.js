@@ -10,6 +10,13 @@ const elements = {
   setupPanel: document.querySelector("#setupPanel"),
   authPanel: document.querySelector("#authPanel"),
   appPanel: document.querySelector("#appPanel"),
+  homeView: document.querySelector("#homeView"),
+  addView: document.querySelector("#addView"),
+  collectionView: document.querySelector("#collectionView"),
+  homeAddButton: document.querySelector("#homeAddButton"),
+  viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
+  recentCardsGrid: document.querySelector("#recentCardsGrid"),
+  recentEmptyState: document.querySelector("#recentEmptyState"),
   authForm: document.querySelector("#authForm"),
   signupButton: document.querySelector("#signupButton"),
   logoutButton: document.querySelector("#logoutButton"),
@@ -77,6 +84,7 @@ let selectedCard = null;
 let detailSide = "front";
 let editingCard = null;
 let collectionView = "active";
+let activeAppView = "home";
 
 applyInitialTheme();
 init();
@@ -110,6 +118,15 @@ async function init() {
 
 function bindEvents() {
   elements.authForm.addEventListener("submit", signIn);
+
+  document.querySelector(".bottom-nav").addEventListener("click", event => {
+    const button = event.target.closest("[data-view]");
+    if (!button) return;
+    navigateTo(button.dataset.view);
+  });
+
+  elements.homeAddButton.addEventListener("click", () => navigateTo("add"));
+  elements.viewAllCardsButton.addEventListener("click", () => navigateTo("collection"));
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -406,6 +423,7 @@ async function saveCard(event) {
     resetCardForm();
     setCardMessage(successMessage);
     await loadCards();
+    navigateTo("home");
   } catch (error) {
     console.error("Card save failed:", error);
     setCardMessage(error?.message || "Could not save the card.");
@@ -487,6 +505,81 @@ function previewSelectedPhoto(input, imageElement) {
   imageElement.classList.remove("hidden");
 }
 
+
+
+function navigateTo(view) {
+  activeAppView = view;
+
+  const showHome = view === "home";
+  const showAdd = view === "add";
+  const showCollection = view === "collection" || view === "trash";
+
+  elements.homeView.classList.toggle("hidden", !showHome);
+  elements.addView.classList.toggle("hidden", !showAdd);
+  elements.collectionView.classList.toggle("hidden", !showCollection);
+
+  for (const button of document.querySelectorAll(".nav-button")) {
+    button.classList.toggle("active", button.dataset.view === view);
+  }
+
+  if (view === "collection") {
+    switchCollectionView("active");
+  }
+
+  if (view === "trash") {
+    switchCollectionView("trash");
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderRecentCards(activeCards) {
+  const recent = activeCards.slice(0, 4);
+  elements.recentCardsGrid.replaceChildren();
+
+  for (const card of recent) {
+    const article = document.createElement("article");
+    article.className = "recent-card";
+    article.tabIndex = 0;
+    article.setAttribute("role", "button");
+
+    const photoWrap = document.createElement("div");
+    photoWrap.className = "recent-card-photo";
+
+    if (card.front_photo_url) {
+      const image = document.createElement("img");
+      image.src = card.front_photo_url;
+      image.alt = `Front of ${card.player_name} card`;
+      photoWrap.append(image);
+    } else {
+      photoWrap.textContent = "No photo";
+    }
+
+    const info = document.createElement("div");
+    info.className = "recent-card-info";
+
+    const name = document.createElement("strong");
+    name.textContent = card.player_name;
+
+    const meta = document.createElement("span");
+    meta.textContent = [card.card_year, card.brand].filter(Boolean).join(" • ");
+
+    info.append(name, meta);
+    article.append(photoWrap, info);
+
+    article.addEventListener("click", () => openCardDialog(card));
+    article.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCardDialog(card);
+      }
+    });
+
+    elements.recentCardsGrid.append(article);
+  }
+
+  elements.recentEmptyState.classList.toggle("hidden", recent.length > 0);
+}
 
 function switchCollectionView(view) {
   collectionView = view;
@@ -601,6 +694,7 @@ function renderCards() {
   elements.tradeCount.textContent =
     activeCards.filter(card => card.status === "trade").length;
   elements.trashCount.textContent = deletedCards.length;
+  renderRecentCards(activeCards);
 
   elements.sportFilters.classList.toggle("hidden", collectionView === "trash");
   elements.statusFilters.classList.toggle("hidden", collectionView === "trash");
@@ -701,6 +795,7 @@ function beginEditSelectedCard() {
   elements.saveCardButton.textContent = "Update card";
 
   closeCardDialog();
+  navigateTo("add");
 
   elements.cardForm.closest(".panel").scrollIntoView({
     behavior: "smooth",

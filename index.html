@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=7">
+  <link rel="stylesheet" href="./css/app.css?v=8">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -54,7 +54,17 @@
     </section>
 
     <section id="appPanel" class="hidden">
-      <section class="stats-grid">
+      <section id="homeView" class="app-view">
+        <section class="welcome-card">
+          <div>
+            <p class="eyebrow">Welcome to your vault</p>
+            <h2>Brenton's Collection</h2>
+            <p class="muted">A quick look at what is inside your collection.</p>
+          </div>
+          <button id="homeAddButton" class="button" type="button">Add a card</button>
+        </section>
+
+        <section class="stats-grid">
         <article class="stat-card">
           <span>Total cards</span>
           <strong id="totalCards">0</strong>
@@ -69,6 +79,20 @@
         </article>
       </section>
 
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Recently added</p>
+              <h2>Newest cards</h2>
+            </div>
+            <button id="viewAllCardsButton" class="button button-secondary" type="button">View all</button>
+          </div>
+          <div id="recentCardsGrid" class="recent-cards-grid"></div>
+          <p id="recentEmptyState" class="empty-state">No cards yet.</p>
+        </section>
+      </section>
+
+      <section id="addView" class="app-view hidden">
       <section class="panel">
         <div class="section-heading">
           <div>
@@ -162,7 +186,9 @@
 
         <p id="cardMessage" class="message" aria-live="polite"></p>
       </section>
+      </section>
 
+      <section id="collectionView" class="app-view hidden">
       <section class="panel collection-panel">
         <div class="collection-header">
           <div>
@@ -209,6 +235,26 @@
         <div id="cardsGrid" class="cards-grid"></div>
         <p id="emptyState" class="empty-state">No cards match these filters.</p>
       </section>
+      </section>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-button active" type="button" data-view="home">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span>Home</span>
+        </button>
+        <button class="nav-button" type="button" data-view="collection">
+          <span class="nav-icon" aria-hidden="true">▦</span>
+          <span>Collection</span>
+        </button>
+        <button class="nav-button nav-button-primary" type="button" data-view="add">
+          <span class="nav-icon" aria-hidden="true">＋</span>
+          <span>Add</span>
+        </button>
+        <button class="nav-button" type="button" data-view="trash">
+          <span class="nav-icon" aria-hidden="true">♲</span>
+          <span>Trash</span>
+        </button>
+      </nav>
     </section>
   </main>
 
@@ -283,6 +329,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=7"></script>
+  <script type="module" src="./js/app.js?v=8"></script>
 </body>
 </html>

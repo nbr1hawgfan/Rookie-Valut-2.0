@@ -1,9 +1,9 @@
-const CACHE_NAME = "rookie-vault-v7";
+const CACHE_NAME = "rookie-vault-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./css/app.css?v=7",
-  "./js/app.js?v=7",
+  "./css/app.css?v=8",
+  "./js/app.js?v=8",
   "./manifest.webmanifest",
   "./icons/icon.svg"
 ];
@@ -19,9 +19,7 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       )
     )
   );
