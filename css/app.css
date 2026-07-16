@@ -496,3 +496,35 @@ input:focus, select:focus, textarea:focus {
   .detail-layout { grid-template-columns: 1fr; }
   .card-dialog { width: calc(100% - .75rem); max-height: calc(100dvh - .75rem); }
 }
+
+
+/* Edit-card upgrade — v6 */
+
+.edit-notice {
+  margin: 0 0 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+  font-weight: 750;
+}
+
+.form-actions,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.detail-actions > * {
+  flex: 1 1 180px;
+}
+
+.current-photo-note {
+  display: block;
+  margin-top: .35rem;
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 650;
+}

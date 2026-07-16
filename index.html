@@ -7,7 +7,7 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=5">
+  <link rel="stylesheet" href="./css/app.css?v=6">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -72,9 +72,14 @@
       <section class="panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow accent-text">Add to collection</p>
-            <h2>New card</h2>
+            <p id="formEyebrow" class="eyebrow accent-text">Add to collection</p>
+            <h2 id="formTitle">New card</h2>
           </div>
+          <button id="cancelEditButton" class="button button-secondary hidden" type="button">Cancel edit</button>
+        </div>
+
+        <div id="editNotice" class="edit-notice hidden">
+          Editing an existing card. Current photos will remain unless you choose replacements.
         </div>
 
         <form id="cardForm" class="form-grid">
@@ -149,8 +154,9 @@
             <textarea id="notesInput" rows="3" maxlength="1000"></textarea>
           </label>
 
-          <div class="wide">
+          <div class="wide form-actions">
             <button id="saveCardButton" class="button" type="submit">Save card</button>
+            <button id="cancelEditButtonBottom" class="button button-secondary hidden" type="button">Cancel edit</button>
           </div>
         </form>
 
@@ -230,7 +236,10 @@
           <div><dt>Notes</dt><dd id="detailNotes"></dd></div>
         </dl>
 
-        <button id="detailDeleteButton" class="danger-button" type="button">Move to trash</button>
+        <div class="detail-actions">
+          <button id="detailEditButton" class="button" type="button">Edit card</button>
+          <button id="detailDeleteButton" class="danger-button" type="button">Move to trash</button>
+        </div>
       </section>
     </div>
   </dialog>
@@ -260,6 +269,6 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=5"></script>
+  <script type="module" src="./js/app.js?v=6"></script>
 </body>
 </html>

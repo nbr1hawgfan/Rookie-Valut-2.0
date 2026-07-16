@@ -15,6 +15,11 @@ const elements = {
   logoutButton: document.querySelector("#logoutButton"),
   themeToggle: document.querySelector("#themeToggle"),
   themeIcon: document.querySelector("#themeIcon"),
+  formEyebrow: document.querySelector("#formEyebrow"),
+  formTitle: document.querySelector("#formTitle"),
+  editNotice: document.querySelector("#editNotice"),
+  cancelEditButton: document.querySelector("#cancelEditButton"),
+  cancelEditButtonBottom: document.querySelector("#cancelEditButtonBottom"),
   authMessage: document.querySelector("#authMessage"),
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -49,6 +54,7 @@ const elements = {
   detailStatus: document.querySelector("#detailStatus"),
   detailLocation: document.querySelector("#detailLocation"),
   detailNotes: document.querySelector("#detailNotes"),
+  detailEditButton: document.querySelector("#detailEditButton"),
   detailDeleteButton: document.querySelector("#detailDeleteButton")
 };
 
@@ -61,6 +67,7 @@ let activeStatus = "all";
 let previewObjectUrls = [];
 let selectedCard = null;
 let detailSide = "front";
+let editingCard = null;
 
 applyInitialTheme();
 init();
@@ -98,6 +105,8 @@ function bindEvents() {
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
   elements.cardForm.addEventListener("submit", saveCard);
+  elements.cancelEditButton.addEventListener("click", cancelEdit);
+  elements.cancelEditButtonBottom.addEventListener("click", cancelEdit);
   elements.searchInput.addEventListener("input", renderCards);
 
   elements.sportFilters.addEventListener("click", event => {
@@ -127,6 +136,7 @@ function bindEvents() {
   elements.closeDialogButton.addEventListener("click", closeCardDialog);
   elements.showFrontButton.addEventListener("click", () => setDetailSide("front"));
   elements.showBackButton.addEventListener("click", () => setDetailSide("back"));
+  elements.detailEditButton.addEventListener("click", beginEditSelectedCard);
   elements.detailDeleteButton.addEventListener("click", deleteSelectedCard);
 
   elements.cardDialog.addEventListener("click", event => {
@@ -305,26 +315,34 @@ async function saveCard(event) {
   }
 
   setSavingState(true);
-  setCardMessage("Preparing card...");
+  setCardMessage(editingCard ? "Updating card..." : "Preparing card...");
+
   const uploadedPaths = [];
+  const oldPathsToDelete = [];
 
   try {
-    let frontPhotoPath = null;
-    let backPhotoPath = null;
+    let frontPhotoPath = editingCard?.front_photo_path ?? null;
+    let backPhotoPath = editingCard?.back_photo_path ?? null;
 
     const frontFile = elements.frontPhotoInput.files?.[0];
     const backFile = elements.backPhotoInput.files?.[0];
 
     if (frontFile) {
       setCardMessage("Uploading front photo...");
-      frontPhotoPath = await uploadCardPhoto(frontFile);
-      uploadedPaths.push(frontPhotoPath);
+      const newFrontPath = await uploadCardPhoto(frontFile);
+      uploadedPaths.push(newFrontPath);
+
+      if (frontPhotoPath) oldPathsToDelete.push(frontPhotoPath);
+      frontPhotoPath = newFrontPath;
     }
 
     if (backFile) {
       setCardMessage("Uploading back photo...");
-      backPhotoPath = await uploadCardPhoto(backFile);
-      uploadedPaths.push(backPhotoPath);
+      const newBackPath = await uploadCardPhoto(backFile);
+      uploadedPaths.push(newBackPath);
+
+      if (backPhotoPath) oldPathsToDelete.push(backPhotoPath);
+      backPhotoPath = newBackPath;
     }
 
     const payload = {
@@ -343,12 +361,38 @@ async function saveCard(event) {
       back_photo_path: backPhotoPath
     };
 
-    setCardMessage("Saving card...");
-    const { error } = await supabase.from("cards").insert(payload);
+    let error;
+
+    if (editingCard) {
+      setCardMessage("Updating card...");
+      ({ error } = await supabase
+        .from("cards")
+        .update(payload)
+        .eq("id", editingCard.id)
+        .eq("collection_id", currentCollectionId));
+    } else {
+      setCardMessage("Saving card...");
+      ({ error } = await supabase.from("cards").insert(payload));
+    }
+
     if (error) throw error;
 
+    if (oldPathsToDelete.length) {
+      const { error: cleanupError } = await supabase.storage
+        .from(PHOTO_BUCKET)
+        .remove(oldPathsToDelete);
+
+      if (cleanupError) {
+        console.error("Old photo cleanup failed:", cleanupError);
+      }
+    }
+
+    const successMessage = editingCard
+      ? "Card updated successfully."
+      : "Card and photos saved.";
+
     resetCardForm();
-    setCardMessage("Card and photos saved.");
+    setCardMessage(successMessage);
     await loadCards();
   } catch (error) {
     console.error("Card save failed:", error);
@@ -359,7 +403,9 @@ async function saveCard(event) {
         .from(PHOTO_BUCKET)
         .remove(uploadedPaths);
 
-      if (cleanupError) console.error("Could not clean up uploaded photos:", cleanupError);
+      if (cleanupError) {
+        console.error("Could not clean up new photos:", cleanupError);
+      }
     }
   } finally {
     setSavingState(false);
@@ -561,6 +607,69 @@ function setDetailSide(side) {
   }
 }
 
+
+function beginEditSelectedCard() {
+  if (!selectedCard) return;
+
+  editingCard = selectedCard;
+
+  document.querySelector("#playerInput").value = selectedCard.player_name || "";
+  document.querySelector("#sportInput").value = selectedCard.sport || "Other";
+  document.querySelector("#yearInput").value = selectedCard.card_year ?? "";
+  document.querySelector("#brandInput").value = selectedCard.brand || "";
+  document.querySelector("#setInput").value = selectedCard.set_name || "";
+  document.querySelector("#cardNumberInput").value = selectedCard.card_number || "";
+  document.querySelector("#valueInput").value = selectedCard.estimated_value ?? 0;
+  document.querySelector("#statusInput").value = selectedCard.status || "keep";
+  document.querySelector("#locationInput").value = selectedCard.storage_location || "";
+  document.querySelector("#notesInput").value = selectedCard.notes || "";
+
+  showExistingPreview(
+    elements.frontPreview,
+    selectedCard.front_photo_url,
+    "Current front photo"
+  );
+
+  showExistingPreview(
+    elements.backPreview,
+    selectedCard.back_photo_url,
+    "Current back photo"
+  );
+
+  elements.formEyebrow.textContent = "Update collection";
+  elements.formTitle.textContent = `Edit ${selectedCard.player_name}`;
+  elements.editNotice.classList.remove("hidden");
+  elements.cancelEditButton.classList.remove("hidden");
+  elements.cancelEditButtonBottom.classList.remove("hidden");
+  elements.saveCardButton.textContent = "Update card";
+
+  closeCardDialog();
+
+  elements.cardForm.closest(".panel").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+  setCardMessage("Choose a new front or back photo only when you want to replace the current one.");
+}
+
+function showExistingPreview(imageElement, url, altText) {
+  if (!url) {
+    imageElement.removeAttribute("src");
+    imageElement.classList.add("hidden");
+    return;
+  }
+
+  imageElement.src = url;
+  imageElement.alt = altText;
+  imageElement.classList.remove("hidden");
+}
+
+function cancelEdit() {
+  resetCardForm();
+  setCardMessage("Edit cancelled.");
+}
+
 async function deleteSelectedCard() {
   if (!selectedCard) return;
   if (!window.confirm("Move this card to the trash?")) return;
@@ -590,11 +699,24 @@ function resetCardForm() {
     preview.removeAttribute("src");
     preview.classList.add("hidden");
   }
+
+  editingCard = null;
+  elements.formEyebrow.textContent = "Add to collection";
+  elements.formTitle.textContent = "New card";
+  elements.editNotice.classList.add("hidden");
+  elements.cancelEditButton.classList.add("hidden");
+  elements.cancelEditButtonBottom.classList.add("hidden");
+  elements.saveCardButton.textContent = "Save card";
 }
 
 function setSavingState(isSaving) {
   elements.saveCardButton.disabled = isSaving;
-  elements.saveCardButton.textContent = isSaving ? "Saving..." : "Save card";
+
+  if (isSaving) {
+    elements.saveCardButton.textContent = editingCard ? "Updating..." : "Saving...";
+  } else {
+    elements.saveCardButton.textContent = editingCard ? "Update card" : "Save card";
+  }
 }
 
 function valueOf(selector) {
