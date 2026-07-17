@@ -4,6 +4,8 @@ import * as CardSightSdk from "https://esm.sh/cardsightai@3.6.0";
 import { initSportsFeed } from "./sports-feed.js";
 import { initMusicFeed } from "./music-feed.js";
 import { initHobbyNews } from "./hobby-news.js";
+import { initVideoFeed } from "./video-feed.js";
+import { initSpotlight } from "./spotlight.js";
 
 const PHOTO_BUCKET = "card-photos";
 const MAX_IMAGE_EDGE = 1800;
@@ -212,6 +214,7 @@ const elements = {
   ebaySoldLink: document.querySelector("#ebaySoldLink"),
   ebayActiveLink: document.querySelector("#ebayActiveLink"),
   sportsCardsProLink: document.querySelector("#sportsCardsProLink"),
+  psaCertLink: document.querySelector("#psaCertLink"),
   googlePricingLink: document.querySelector("#googlePricingLink"),
   pricingUpdateForm: document.querySelector("#pricingUpdateForm"),
   pricingValueInput: document.querySelector("#pricingValueInput"),
@@ -364,6 +367,8 @@ function bindEvents() {
   initSportsFeed();
   initMusicFeed();
   initHobbyNews();
+  initVideoFeed();
+  initSpotlight();
   elements.signupButton.addEventListener("click", signUp);
   elements.logoutButton.addEventListener("click", signOut);
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -2458,7 +2463,7 @@ const PORTFOLIO_HISTORY_KEY = "rookie-vault-portfolio-history";
 const CARD_VALUE_HISTORY_KEY = "rookie-vault-card-value-history";
 const NEEDS_CHECK_DAYS = 30;
 
-function recordPortfolioSnapshot(total) {
+function recordPortfolioSnapshot(total, count) {
   const today = new Date().toISOString().slice(0, 10);
   let history = [];
   try {
@@ -2470,8 +2475,9 @@ function recordPortfolioSnapshot(total) {
   const existingToday = history.find(entry => entry.date === today);
   if (existingToday) {
     existingToday.total = total;
+    existingToday.count = count;
   } else {
-    history.push({ date: today, total });
+    history.push({ date: today, total, count });
   }
 
   history = history.slice(-90);
@@ -2547,8 +2553,9 @@ function renderLedger() {
     0
   );
 
-  const history = recordPortfolioSnapshot(totalValue);
+  const history = recordPortfolioSnapshot(totalValue, activeCards.length);
   const weekChange = getPortfolioChangeVsDaysAgo(history, 7);
+  window.rookieVaultPortfolioHistory = history;
 
   const sellCandidates = activeCards.filter(
     card => card.status === "trade" || card.status === "duplicate"
@@ -2617,6 +2624,17 @@ function broadcastLedgerDataForTicker(activeCards) {
     const card = cards.find(c => c.id === cardId && !c.deleted_at);
     if (card) openCardDialog(card);
   };
+  window.rookieVaultActiveCardsSummary = activeCards.map(card => ({
+    id: card.id,
+    player_name: card.player_name,
+    card_year: card.card_year,
+    brand: card.brand,
+    front_photo_url: card.front_photo_url,
+    estimated_value: Number(card.estimated_value || 0),
+    quantity: Math.max(1, Number(card.quantity || 1)),
+    created_at: card.created_at,
+    is_rookie: Boolean(card.is_rookie)
+  }));
 
   window.dispatchEvent(new CustomEvent("rookie-vault-ledger-update"));
 }
@@ -2719,6 +2737,17 @@ function renderLedgerTable(list) {
       window.open(`https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Complete=1&LH_Sold=1`, "_blank", "noopener,noreferrer");
     });
 
+    const shopLink = document.createElement("button");
+    shopLink.type = "button";
+    shopLink.className = "ledger-icon-button";
+    shopLink.title = "Shop this card on eBay (active listings)";
+    shopLink.innerHTML = '<span aria-hidden="true">🛒</span>';
+    shopLink.addEventListener("click", event => {
+      event.stopPropagation();
+      const q = encodeURIComponent(buildPricingSearch(card));
+      window.open(`https://www.ebay.com/sch/i.html?_nkw=${q}&_sop=15`, "_blank", "noopener,noreferrer");
+    });
+
     const detailLink = document.createElement("button");
     detailLink.type = "button";
     detailLink.className = "ledger-icon-button";
@@ -2729,7 +2758,7 @@ function renderLedgerTable(list) {
       openCardDialog(card);
     });
 
-    actions.append(searchLink, detailLink);
+    actions.append(searchLink, shopLink, detailLink);
     row.append(thumb, info, value, change, actions);
     row.addEventListener("click", () => openCardDialog(card));
     elements.ledgerTable.append(row);
@@ -3457,6 +3486,11 @@ function populatePricingResearch(card) {
     `https://www.sportscardspro.com/search-products?q=${encoded}`;
   elements.googlePricingLink.href =
     `https://www.google.com/search?q=${encodeURIComponent(searchText + " sports card sold price")}`;
+
+  const isPsaGraded =
+    card.card_condition === "graded" &&
+    String(card.grading_company || "").toLowerCase().includes("psa");
+  elements.psaCertLink.classList.toggle("hidden", !isPsaGraded);
 
   elements.priceResearchDate.textContent =
     card.price_checked_at

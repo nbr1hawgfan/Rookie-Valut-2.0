@@ -7,10 +7,10 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=25">
-  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=25">
-  <link rel="stylesheet" href="./css/sports-feed.css?v=25">
-  <link rel="stylesheet" href="./css/worlds.css?v=25">
+  <link rel="stylesheet" href="./css/app.css?v=26">
+  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=26">
+  <link rel="stylesheet" href="./css/sports-feed.css?v=26">
+  <link rel="stylesheet" href="./css/worlds.css?v=26">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -68,6 +68,21 @@
             <button id="homeAddButton" class="button" type="button">Add a card</button>
             <button id="homeSetsButton" class="button button-secondary" type="button">Set Tracker</button>
             <button id="homeShowButton" class="button button-secondary" type="button">Card Show Mode</button>
+          </div>
+        </section>
+
+        <section class="panel spotlight-panel" id="spotlightPanel">
+          <div id="milestoneBanner" class="milestone-banner hidden">
+            <span id="milestoneBannerText"></span>
+            <button id="milestoneBannerDismiss" class="icon-button" type="button" aria-label="Dismiss">✕</button>
+          </div>
+
+          <div id="spotlightCard" class="spotlight-card"></div>
+          <p id="spotlightEmpty" class="empty-state hidden">Add a card to see it spotlighted here.</p>
+
+          <div class="spotlight-quick-links">
+            <a class="pricing-link" href="https://www.ebay.com/sch/i.html?_nkw=sports+cards" target="_blank" rel="noopener noreferrer">Shop sports cards on eBay</a>
+            <a class="pricing-link" href="https://www.psacard.com/cert" target="_blank" rel="noopener noreferrer">Verify a PSA cert</a>
           </div>
         </section>
 
@@ -137,6 +152,44 @@
             loading="lazy"
           ></iframe>
           <p id="musicFeedMessage" class="muted small"></p>
+        </section>
+
+        <section class="panel video-feed-panel" id="videoFeedPanel">
+          <div class="diagnostic-heading">
+            <div>
+              <h4>Hobby video</h4>
+              <p class="muted">Box breaks, pack rips, and hobby content.</p>
+            </div>
+            <button id="videoFeedSettingsButton" class="button button-secondary" type="button">Edit channels</button>
+          </div>
+
+          <details id="videoFeedSettings" class="cardsight-settings hidden">
+            <summary>Add a channel or playlist</summary>
+            <label>YouTube playlist, channel, or video link
+              <input id="videoFeedUrlInput" type="text" placeholder="https://www.youtube.com/channel/... or a playlist link">
+            </label>
+            <label>Label
+              <input id="videoFeedLabelInput" type="text" placeholder="Channel name">
+            </label>
+            <div class="diagnostic-actions">
+              <button id="addVideoPlaylistButton" class="button" type="button">Add</button>
+              <button id="removeVideoPlaylistButton" class="button button-secondary" type="button">Remove current</button>
+            </div>
+          </details>
+
+          <div id="videoFeedTabs" class="filter-row"></div>
+          <iframe
+            id="videoFeedFrame"
+            class="video-feed-frame"
+            title="YouTube video"
+            width="100%"
+            height="220"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            loading="lazy"
+            allowfullscreen
+          ></iframe>
+          <p id="videoFeedMessage" class="muted small"></p>
         </section>
 
         <section class="panel hobby-news-panel" id="hobbyNewsPanel">
@@ -983,6 +1036,9 @@
             <a id="googlePricingLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
               Web search
             </a>
+            <a id="psaCertLink" class="pricing-link hidden" href="https://www.psacard.com/cert" target="_blank" rel="noopener noreferrer">
+              Verify on PSA
+            </a>
           </div>
 
           <form id="pricingUpdateForm" class="pricing-update-form">
@@ -1063,10 +1119,12 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=25"></script>
-  <script type="module" src="./js/cardsight-diagnostics.js?v=25"></script>
-  <script type="module" src="./js/sports-feed.js?v=25"></script>
-  <script type="module" src="./js/music-feed.js?v=25"></script>
-  <script type="module" src="./js/hobby-news.js?v=25"></script>
+  <script type="module" src="./js/app.js?v=26"></script>
+  <script type="module" src="./js/cardsight-diagnostics.js?v=26"></script>
+  <script type="module" src="./js/sports-feed.js?v=26"></script>
+  <script type="module" src="./js/music-feed.js?v=26"></script>
+  <script type="module" src="./js/hobby-news.js?v=26"></script>
+  <script type="module" src="./js/video-feed.js?v=26"></script>
+  <script type="module" src="./js/spotlight.js?v=26"></script>
 </body>
 </html>
