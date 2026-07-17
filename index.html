@@ -7,7 +7,8 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=17">
+  <link rel="stylesheet" href="./css/app.css?v=18">
+  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=18">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -609,7 +610,30 @@
                 <button id="saveCardSightKeyButton" class="button" type="button">Save key</button>
                 <button id="clearCardSightKeyButton" class="button button-secondary" type="button">Clear</button>
               </div>
+              
               <p class="muted cardsight-key-note">Saved only in this browser on this device—not GitHub or Supabase.</p>
+
+              <section class="cardsight-diagnostics">
+                <div class="diagnostic-heading">
+                  <div>
+                    <h4>Connection diagnostics</h4>
+                    <p class="muted">Tests the API, saved key, account access, autocomplete, and a known Aaron Judge catalog search.</p>
+                  </div>
+                  <button id="runCardSightDiagnosticsButton" class="button" type="button">Run diagnostics</button>
+                </div>
+
+                <div id="cardSightDiagnosticResults" class="diagnostic-results"></div>
+
+                <div class="diagnostic-actions">
+                  <button id="copyCardSightDiagnosticsButton" class="button button-secondary hidden" type="button">Copy report</button>
+                  <button id="clearCardSightDiagnosticsButton" class="button button-secondary hidden" type="button">Clear report</button>
+                </div>
+
+                <details id="cardSightRawDiagnostics" class="raw-diagnostics hidden">
+                  <summary>Technical details</summary>
+                  <pre id="cardSightRawDiagnosticsText"></pre>
+                </details>
+              </section>
             </details>
             <div class="cardsight-actions">
               <button id="identifyWithCardSightButton" class="button" type="button">Identify front photo</button>
@@ -918,6 +942,7 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=17"></script>
+  <script type="module" src="./js/app.js?v=18"></script>
+  <script type="module" src="./js/cardsight-diagnostics.js?v=18"></script>
 </body>
 </html>

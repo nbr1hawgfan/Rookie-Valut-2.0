@@ -1,33 +1,26 @@
-# Rookie Vault CardSight Integration v1
+# Rookie Vault CardSight Diagnostics
 
 No Supabase migration is required.
 
 Replace:
 - `index.html`
 - `css/app.css`
+- `css/cardsight-diagnostics.css`
 - `js/app.js`
+- `js/cardsight-diagnostics.js`
 - `sw.js`
 
 Keep `js/config.js`.
 
-## Setup
-1. Open Scan.
-2. Expand CardSight API settings.
-3. Paste the CardSight API key.
-4. Save it.
+## Tests
+- SDK/client creation
+- Public API health
+- API-key authentication
+- Account/subscription usage
+- Aaron Judge autocomplete
+- Aaron Judge catalog search
+- Optional current-photo card detection
 
-The key stays in localStorage on that browser/device. It is not committed to GitHub or stored in Supabase.
+The report exposes the real response/error while redacting keys and authorization values.
 
-## Adds
-- CardSight photo identification
-- Baseball, football, basketball, and hockey fallback
-- Structured CardSight catalog search
-- Full catalog-card lookup
-- Populates player, year, manufacturer, set, number, parallel, sport, rookie suggestion
-- Recent completed-sales estimate
-- Suggested value transfers into Add Card
-- OCR remains the free local first pass
-- Duplicate detection runs after CardSight matches
-- PWA cache v17
-
-Suggested commit: `Merge CardSight identification catalog and pricing`
+Suggested commit: `Add CardSight connection and catalog diagnostics`
