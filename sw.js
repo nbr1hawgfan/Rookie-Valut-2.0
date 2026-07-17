@@ -1,19 +1,19 @@
-const CACHE_NAME = "rookie-vault-v26";
+const CACHE_NAME = "rookie-vault-v27";
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./css/app.css?v=26",
-  "./css/cardsight-diagnostics.css?v=26",
-  "./css/sports-feed.css?v=26",
-  "./css/worlds.css?v=26",
-  "./js/app.js?v=26",
-  "./js/cardsight-diagnostics.js?v=26",
-  "./js/sports-feed.js?v=26",
-  "./js/music-feed.js?v=26",
-  "./js/hobby-news.js?v=26",
-  "./js/video-feed.js?v=26",
-  "./js/spotlight.js?v=26",
+  "./css/app.css?v=27",
+  "./css/cardsight-diagnostics.css?v=27",
+  "./css/sports-feed.css?v=27",
+  "./css/worlds.css?v=27",
+  "./js/app.js?v=27",
+  "./js/cardsight-diagnostics.js?v=27",
+  "./js/sports-feed.js?v=27",
+  "./js/music-feed.js?v=27",
+  "./js/hobby-news.js?v=27",
+  "./js/video-feed.js?v=27",
+  "./js/spotlight.js?v=27",
   "./manifest.webmanifest",
   "./icons/icon.svg"
 ];

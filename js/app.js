@@ -22,7 +22,6 @@ const elements = {
   homeView: document.querySelector("#homeView"),
   addView: document.querySelector("#addView"),
   collectionView: document.querySelector("#collectionView"),
-  tradeView: document.querySelector("#tradeView"),
   scanView: document.querySelector("#scanView"),
   lookupCardForm: document.querySelector("#lookupCardForm"),
   lookupPlayerInput: document.querySelector("#lookupPlayerInput"),
@@ -86,9 +85,6 @@ const elements = {
   showDuplicateCount: document.querySelector("#showDuplicateCount"),
   showWishlistCount: document.querySelector("#showWishlistCount"),
   showHighValueCount: document.querySelector("#showHighValueCount"),
-  manageSetsButton: document.querySelector("#manageSetsButton"),
-  homeSetProgressGrid: document.querySelector("#homeSetProgressGrid"),
-  homeSetEmpty: document.querySelector("#homeSetEmpty"),
   setsView: document.querySelector("#setsView"),
   newSetGoalButton: document.querySelector("#newSetGoalButton"),
   setGoalForm: document.querySelector("#setGoalForm"),
@@ -118,9 +114,6 @@ const elements = {
   addMissingCardButton: document.querySelector("#addMissingCardButton"),
   editSetGoalButton: document.querySelector("#editSetGoalButton"),
   deleteSetGoalButton: document.querySelector("#deleteSetGoalButton"),
-  viewAllCardsButton: document.querySelector("#viewAllCardsButton"),
-  recentCardsGrid: document.querySelector("#recentCardsGrid"),
-  recentEmptyState: document.querySelector("#recentEmptyState"),
   exportCsvButton: document.querySelector("#exportCsvButton"),
   exportJsonButton: document.querySelector("#exportJsonButton"),
   exportSummaryButton: document.querySelector("#exportSummaryButton"),
@@ -308,8 +301,6 @@ function bindEvents() {
   elements.homeAddButton.addEventListener("click", () => navigateTo("add"));
   elements.homeSetsButton.addEventListener("click", () => navigateTo("sets"));
   elements.homeShowButton.addEventListener("click", enterCardShowMode);
-  elements.manageSetsButton.addEventListener("click", () => navigateTo("sets"));
-  elements.viewAllCardsButton.addEventListener("click", () => navigateTo("collection"));
   elements.exportCsvButton.addEventListener("click", exportCollectionCsv);
   elements.exportJsonButton.addEventListener("click", exportCollectionJson);
   elements.exportSummaryButton.addEventListener("click", exportCollectionSummary);
@@ -1173,7 +1164,6 @@ async function loadSetGoals() {
   if (!currentCollectionId) {
     setGoals = [];
     renderSetGoals();
-    renderHomeSetProgress();
     return;
   }
 
@@ -1191,7 +1181,6 @@ async function loadSetGoals() {
 
   setGoals = data || [];
   renderSetGoals();
-  renderHomeSetProgress();
 }
 
 function calculateSetProgress(goal) {
@@ -1239,18 +1228,6 @@ function calculateSetProgress(goal) {
 function parseNumericCardNumber(value) {
   const match = String(value || "").match(/(\d{1,5})/);
   return match ? Number(match[1]) : null;
-}
-
-function renderHomeSetProgress() {
-  elements.homeSetProgressGrid.replaceChildren();
-
-  for (const goal of setGoals.slice(0, 3)) {
-    const progress = calculateSetProgress(goal);
-    const article = buildSetGoalCard(goal, progress, true);
-    elements.homeSetProgressGrid.append(article);
-  }
-
-  elements.homeSetEmpty.classList.toggle("hidden", setGoals.length > 0);
 }
 
 function renderSetGoals() {
@@ -3151,53 +3128,6 @@ function navigateTo(view) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function renderRecentCards(activeCards) {
-  const recent = activeCards.slice(0, 4);
-  elements.recentCardsGrid.replaceChildren();
-
-  for (const card of recent) {
-    const article = document.createElement("article");
-    article.className = "recent-card";
-    article.tabIndex = 0;
-    article.setAttribute("role", "button");
-
-    const photoWrap = document.createElement("div");
-    photoWrap.className = "recent-card-photo";
-
-    if (card.front_photo_url) {
-      const image = document.createElement("img");
-      image.src = card.front_photo_url;
-      image.alt = `Front of ${card.player_name} card`;
-      photoWrap.append(image);
-    } else {
-      photoWrap.textContent = "No photo";
-    }
-
-    const info = document.createElement("div");
-    info.className = "recent-card-info";
-
-    const name = document.createElement("strong");
-    name.textContent = card.player_name;
-
-    const meta = document.createElement("span");
-    meta.textContent = [card.card_year, card.brand].filter(Boolean).join(" • ");
-
-    info.append(name, meta);
-    article.append(photoWrap, info);
-
-    article.addEventListener("click", () => openCardDialog(card));
-    article.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openCardDialog(card);
-      }
-    });
-
-    elements.recentCardsGrid.append(article);
-  }
-
-  elements.recentEmptyState.classList.toggle("hidden", recent.length > 0);
-}
 
 
 function clearCollectionFilters() {
@@ -3367,8 +3297,6 @@ function renderCards() {
     activeCards.filter(card => Number(card.estimated_value || 0) <= 0).length;
   elements.missingPhotoCount.textContent =
     activeCards.filter(card => !card.front_photo_path).length;
-  renderRecentCards(activeCards);
-  renderHomeSetProgress();
 
   elements.sportFilters.classList.toggle("hidden", collectionView === "trash");
   elements.statusFilters.classList.toggle("hidden", collectionView === "trash");

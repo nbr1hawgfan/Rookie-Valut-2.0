@@ -7,10 +7,10 @@
   <meta name="description" content="A private family sports card collection app.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/app.css?v=26">
-  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=26">
-  <link rel="stylesheet" href="./css/sports-feed.css?v=26">
-  <link rel="stylesheet" href="./css/worlds.css?v=26">
+  <link rel="stylesheet" href="./css/app.css?v=27">
+  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=27">
+  <link rel="stylesheet" href="./css/sports-feed.css?v=27">
+  <link rel="stylesheet" href="./css/worlds.css?v=27">
   <title>Rookie Vault</title>
 </head>
 <body>
@@ -202,115 +202,6 @@
           </div>
           <div id="hobbyNewsList" class="sports-feed-news"></div>
           <p id="hobbyNewsMessage" class="muted small"></p>
-        </section>
-
-        <section class="stats-grid">
-        <article class="stat-card">
-          <span>Total cards</span>
-          <strong id="totalCards">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Estimated value</span>
-          <strong id="totalValue">$0.00</strong>
-        </article>
-        <article class="stat-card">
-          <span>For trade</span>
-          <strong id="tradeCount">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Rookie cards</span>
-          <strong id="rookieCount">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Autographs</span>
-          <strong id="autographCount">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Graded cards</span>
-          <strong id="gradedCount">0</strong>
-        </article>
-      </section>
-
-      <section class="health-grid">
-        <article class="health-card">
-          <span>Numbered cards</span>
-          <strong id="numberedCount">0</strong>
-        </article>
-        <article class="health-card">
-          <span>Missing values</span>
-          <strong id="missingValueCount">0</strong>
-        </article>
-        <article class="health-card">
-          <span>Missing front photos</span>
-          <strong id="missingPhotoCount">0</strong>
-        </article>
-      </section>
-
-        <section class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow accent-text">Recently added</p>
-              <h2>Newest cards</h2>
-            </div>
-            <button id="viewAllCardsButton" class="button button-secondary" type="button">View all</button>
-          </div>
-          <div id="recentCardsGrid" class="recent-cards-grid"></div>
-          <p id="recentEmptyState" class="empty-state">No cards yet.</p>
-        </section>
-
-
-        <section class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow accent-text">Set progress</p>
-              <h2>Building sets</h2>
-            </div>
-            <button id="manageSetsButton" class="button button-secondary" type="button">Manage sets</button>
-          </div>
-          <div id="homeSetProgressGrid" class="home-set-progress-grid"></div>
-          <p id="homeSetEmpty" class="empty-state">No set goals yet. Create one to start tracking completion.</p>
-        </section>
-
-        <section class="panel backup-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow accent-text">Safety first</p>
-              <h2>Backup Center</h2>
-              <p class="muted">Download copies of Brenton's collection to keep outside the app.</p>
-            </div>
-            <div class="backup-status">
-              <span>Last backup</span>
-              <strong id="lastBackupText">Never</strong>
-            </div>
-          </div>
-
-          <div class="backup-grid">
-            <article class="backup-card">
-              <div>
-                <h3>CSV Collection</h3>
-                <p>Spreadsheet-friendly export of all active cards and collector details.</p>
-              </div>
-              <button id="exportCsvButton" class="button" type="button">Download CSV</button>
-            </article>
-
-            <article class="backup-card">
-              <div>
-                <h3>Complete JSON Backup</h3>
-                <p>Full active and trashed card records, including photo storage paths.</p>
-              </div>
-              <button id="exportJsonButton" class="button" type="button">Download JSON</button>
-            </article>
-
-            <article class="backup-card">
-              <div>
-                <h3>Collection Summary</h3>
-                <p>A readable text report with totals, values, sports and collector highlights.</p>
-              </div>
-              <button id="exportSummaryButton" class="button" type="button">Download Summary</button>
-            </article>
-          </div>
-
-          <p id="backupMessage" class="message" aria-live="polite"></p>
         </section>
       </section>
 
@@ -898,6 +789,90 @@
           <div id="ledgerCards" class="ledger-card-grid hidden"></div>
           <p id="ledgerEmpty" class="empty-state hidden">No cards match this filter.</p>
         </section>
+
+        <section class="stats-grid">
+          <article class="stat-card">
+            <span>Total cards</span>
+            <strong id="totalCards">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Estimated value</span>
+            <strong id="totalValue">$0.00</strong>
+          </article>
+          <article class="stat-card">
+            <span>For trade</span>
+            <strong id="tradeCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Rookie cards</span>
+            <strong id="rookieCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Autographs</span>
+            <strong id="autographCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Graded cards</span>
+            <strong id="gradedCount">0</strong>
+          </article>
+        </section>
+
+        <section class="health-grid">
+          <article class="health-card">
+            <span>Numbered cards</span>
+            <strong id="numberedCount">0</strong>
+          </article>
+          <article class="health-card">
+            <span>Missing values</span>
+            <strong id="missingValueCount">0</strong>
+          </article>
+          <article class="health-card">
+            <span>Missing front photos</span>
+            <strong id="missingPhotoCount">0</strong>
+          </article>
+        </section>
+
+        <section class="panel backup-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Safety first</p>
+              <h2>Backup Center</h2>
+              <p class="muted">Download copies of Brenton's collection to keep outside the app.</p>
+            </div>
+            <div class="backup-status">
+              <span>Last backup</span>
+              <strong id="lastBackupText">Never</strong>
+            </div>
+          </div>
+
+          <div class="backup-grid">
+            <article class="backup-card">
+              <div>
+                <h3>CSV Collection</h3>
+                <p>Spreadsheet-friendly export of all active cards and collector details.</p>
+              </div>
+              <button id="exportCsvButton" class="button" type="button">Download CSV</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Complete JSON Backup</h3>
+                <p>Full active and trashed card records, including photo storage paths.</p>
+              </div>
+              <button id="exportJsonButton" class="button" type="button">Download JSON</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Collection Summary</h3>
+                <p>A readable text report with totals, values, sports and collector highlights.</p>
+              </div>
+              <button id="exportSummaryButton" class="button" type="button">Download Summary</button>
+            </article>
+          </div>
+
+          <p id="backupMessage" class="message" aria-live="polite"></p>
+        </section>
       </section>
 
       <nav class="bottom-nav" aria-label="Main navigation">
@@ -1119,12 +1094,12 @@
     </article>
   </template>
 
-  <script type="module" src="./js/app.js?v=26"></script>
-  <script type="module" src="./js/cardsight-diagnostics.js?v=26"></script>
-  <script type="module" src="./js/sports-feed.js?v=26"></script>
-  <script type="module" src="./js/music-feed.js?v=26"></script>
-  <script type="module" src="./js/hobby-news.js?v=26"></script>
-  <script type="module" src="./js/video-feed.js?v=26"></script>
-  <script type="module" src="./js/spotlight.js?v=26"></script>
+  <script type="module" src="./js/app.js?v=27"></script>
+  <script type="module" src="./js/cardsight-diagnostics.js?v=27"></script>
+  <script type="module" src="./js/sports-feed.js?v=27"></script>
+  <script type="module" src="./js/music-feed.js?v=27"></script>
+  <script type="module" src="./js/hobby-news.js?v=27"></script>
+  <script type="module" src="./js/video-feed.js?v=27"></script>
+  <script type="module" src="./js/spotlight.js?v=27"></script>
 </body>
 </html>
