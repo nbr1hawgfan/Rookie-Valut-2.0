@@ -545,28 +545,48 @@ async function attachSignedPhotoUrls(cardRows) {
   await Promise.all(cardRows.map(async card => {
     card.front_photo_url = null;
     card.back_photo_url = null;
+    card.photo_load_errors = [];
 
     if (card.front_photo_path) {
-      card.front_photo_url = await createSignedPhotoUrl(card.front_photo_path);
+      card.front_photo_url =
+        await createSignedPhotoUrl(card.front_photo_path);
+
+      if (!card.front_photo_url) {
+        card.photo_load_errors.push("front");
+      }
     }
 
     if (card.back_photo_path) {
-      card.back_photo_url = await createSignedPhotoUrl(card.back_photo_path);
+      card.back_photo_url =
+        await createSignedPhotoUrl(card.back_photo_path);
+
+      if (!card.back_photo_url) {
+        card.photo_load_errors.push("back");
+      }
+    }
+
+    if (card.photo_load_errors.length) {
+      console.warn("Card photo URL failure:", {
+        cardId: card.id,
+        player: card.player_name,
+        failedSides: card.photo_load_errors,
+        frontPath: card.front_photo_path,
+        backPath: card.back_photo_path
+      });
     }
   }));
 }
 
 async function createSignedPhotoUrl(path) {
-  const { data, error } = await supabase.storage
-    .from(PHOTO_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_SECONDS);
-
-  if (error) {
-    console.error(`Could not sign photo URL for ${path}:`, error);
+  try {
+    return await createSignedPhotoUrlStrict(path);
+  } catch (error) {
+    console.error(
+      `Could not sign photo URL for ${path}:`,
+      error
+    );
     return null;
   }
-
-  return data?.signedUrl ?? null;
 }
 
 async function saveCard(event) {
@@ -592,7 +612,7 @@ async function saveCard(event) {
 
     if (frontFile) {
       setCardMessage("Uploading front photo...");
-      const newFrontPath = await uploadCardPhoto(frontFile);
+      const newFrontPath = await uploadCardPhoto(frontFile, "front");
       uploadedPaths.push(newFrontPath);
 
       if (frontPhotoPath) oldPathsToDelete.push(frontPhotoPath);
@@ -601,7 +621,7 @@ async function saveCard(event) {
 
     if (backFile) {
       setCardMessage("Uploading back photo...");
-      const newBackPath = await uploadCardPhoto(backFile);
+      const newBackPath = await uploadCardPhoto(backFile, "back");
       uploadedPaths.push(newBackPath);
 
       if (backPhotoPath) oldPathsToDelete.push(backPhotoPath);
@@ -691,8 +711,22 @@ async function saveCard(event) {
       player_name: savedCard.player_name,
       collection_id: savedCard.collection_id,
       status: savedCard.status,
+      front_photo_path: savedCard.front_photo_path,
+      back_photo_path: savedCard.back_photo_path,
       created_at: savedCard.created_at
     });
+
+    if (frontFile && !savedCard.front_photo_path) {
+      throw new Error(
+        "Front photo uploaded, but its path was not saved with the card."
+      );
+    }
+
+    if (backFile && !savedCard.back_photo_path) {
+      throw new Error(
+        "Back photo uploaded, but its path was not saved with the card."
+      );
+    }
 
     if (oldPathsToDelete.length) {
       const { error: cleanupError } = await supabase.storage
@@ -721,10 +755,24 @@ async function saveCard(event) {
     clearCollectionFilters();
     navigateTo("collection");
 
+    const verifiedPhotoCount = [
+      verifiedCard.front_photo_url,
+      verifiedCard.back_photo_url
+    ].filter(Boolean).length;
+
+    const photoText =
+      verifiedPhotoCount === 2
+        ? " Front and back photos verified."
+        : verifiedPhotoCount === 1
+          ? " One photo verified."
+          : " No readable photos are attached.";
+
     setCardMessage(
-      wasEditing
-        ? `${verifiedCard.player_name} was updated and verified in the collection.`
-        : `${verifiedCard.player_name} was saved and verified in the collection.`
+      (
+        wasEditing
+          ? `${verifiedCard.player_name} was updated and verified.`
+          : `${verifiedCard.player_name} was saved and verified.`
+      ) + photoText
     );
 
     window.setTimeout(() => {
@@ -748,22 +796,155 @@ async function saveCard(event) {
   }
 }
 
-async function uploadCardPhoto(file) {
-  if (!file.type.startsWith("image/")) throw new Error("Photo must be an image.");
+async function uploadCardPhoto(file, side = "photo") {
+  if (!file?.type?.startsWith("image/")) {
+    throw new Error(`${titleCase(side)} photo must be an image.`);
+  }
 
-  const compressedBlob = await resizeImage(file, MAX_IMAGE_EDGE, JPEG_QUALITY);
-  const path = `${currentUserId}/${currentCollectionId}/${crypto.randomUUID()}.jpg`;
+  setCardMessage(`Preparing ${side} photo...`);
+  const compressedBlob = await resizeImage(
+    file,
+    MAX_IMAGE_EDGE,
+    JPEG_QUALITY
+  );
 
-  const { error } = await supabase.storage
+  if (!compressedBlob?.size) {
+    throw new Error(
+      `${titleCase(side)} photo compression produced an empty file.`
+    );
+  }
+
+  const path =
+    `${currentUserId}/${currentCollectionId}/` +
+    `${crypto.randomUUID()}.jpg`;
+
+  setCardMessage(`Uploading ${side} photo...`);
+
+  const { data: uploadData, error: uploadError } =
+    await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, compressedBlob, {
+        cacheControl: "3600",
+        contentType: "image/jpeg",
+        upsert: false
+      });
+
+  if (uploadError) {
+    throw new Error(
+      `${titleCase(side)} photo upload failed: ` +
+      `${uploadError.message || "unknown storage error"}`
+    );
+  }
+
+  const uploadedPath = uploadData?.path || path;
+
+  setCardMessage(`Verifying ${side} photo...`);
+  const verification =
+    await verifyStoredPhoto(uploadedPath, side);
+
+  console.info("Rookie Vault verified photo upload:", {
+    side,
+    path: uploadedPath,
+    bytes: compressedBlob.size,
+    signedUrlCreated: Boolean(verification.signedUrl),
+    downloadBytes: verification.downloadBytes
+  });
+
+  return uploadedPath;
+}
+
+async function verifyStoredPhoto(path, side = "photo") {
+  let lastError = null;
+
+  // Storage can occasionally need a brief moment before a newly uploaded
+  // object is readable, especially on mobile connections.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const { data: downloadBlob, error: downloadError } =
+        await supabase.storage
+          .from(PHOTO_BUCKET)
+          .download(path);
+
+      if (downloadError) {
+        throw new Error(
+          `storage download failed: ` +
+          `${downloadError.message || "unknown error"}`
+        );
+      }
+
+      if (!downloadBlob?.size) {
+        throw new Error("downloaded object was empty");
+      }
+
+      const signedUrl = await createSignedPhotoUrlStrict(path);
+
+      // Confirm the exact URL the app will use can actually be opened.
+      const response = await fetch(signedUrl, {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `signed photo URL returned HTTP ${response.status}`
+        );
+      }
+
+      const readableBlob = await response.blob();
+
+      if (!readableBlob?.size) {
+        throw new Error("signed photo URL returned an empty image");
+      }
+
+      return {
+        signedUrl,
+        downloadBytes: downloadBlob.size,
+        readableBytes: readableBlob.size
+      };
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < 3) {
+        await delay(450 * attempt);
+      }
+    }
+  }
+
+  throw new Error(
+    `${titleCase(side)} photo uploaded but could not be read back: ` +
+    `${lastError?.message || "unknown storage access error"}. ` +
+    `Check the card-photos Storage SELECT policy.`
+  );
+}
+
+async function createSignedPhotoUrlStrict(path) {
+  const { data, error } = await supabase.storage
     .from(PHOTO_BUCKET)
-    .upload(path, compressedBlob, {
-      cacheControl: "3600",
-      contentType: "image/jpeg",
-      upsert: false
-    });
+    .createSignedUrl(path, SIGNED_URL_SECONDS);
 
-  if (error) throw error;
-  return path;
+  if (error) {
+    throw new Error(
+      `signed URL creation failed: ` +
+      `${error.message || "unknown storage error"}`
+    );
+  }
+
+  const signedUrl =
+    data?.signedUrl ||
+    data?.signedURL ||
+    null;
+
+  if (!signedUrl) {
+    throw new Error("Supabase returned no signed photo URL");
+  }
+
+  return signedUrl;
+}
+
+function delay(milliseconds) {
+  return new Promise(resolve =>
+    window.setTimeout(resolve, milliseconds)
+  );
 }
 
 async function resizeImage(file, maxEdge, quality) {
