@@ -1,104 +1,52 @@
-const CACHE_NAME = "rookie-vault-v27";
+# Rookie Vault - Small Wins Update (v28)
 
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./css/app.css?v=27",
-  "./css/cardsight-diagnostics.css?v=27",
-  "./css/sports-feed.css?v=27",
-  "./css/worlds.css?v=27",
-  "./js/app.js?v=27",
-  "./js/cardsight-diagnostics.js?v=27",
-  "./js/sports-feed.js?v=27",
-  "./js/music-feed.js?v=27",
-  "./js/hobby-news.js?v=27",
-  "./js/video-feed.js?v=27",
-  "./js/spotlight.js?v=27",
-  "./manifest.webmanifest",
-  "./icons/icon.svg"
-];
+One small addition: an Xbox gamertag quick-link in the Spotlight panel.
+No Supabase migration needed.
 
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.addAll(APP_SHELL)
-    )
-  );
+**Everything in this bundle is a ready-to-extract, drop-in replacement.**
 
-  self.skipWaiting();
-});
+## Files in this bundle (replace all of these)
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    )
-  );
+- `index.html` — Xbox gamertag field + profile link added to Spotlight;
+  version tags bumped to v28
+- `js/spotlight.js` — stores the gamertag on-device, builds the link
+- `css/worlds.css` — small style for the new inline row
+- Everything else — unchanged this round, included for completeness
 
-  self.clients.claim();
-});
+Keep as-is (not in this bundle): `js/config.js`
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") {
-    return;
-  }
+## Xbox: quick link, not a live panel
 
-  const url = new URL(event.request.url);
+You picked the zero-setup option, so here's what this actually is: Brenton
+types his gamertag once (saved on-device, same pattern as everything
+else), and it builds a link to his public profile on xboxgamertag.com — a
+real, established Xbox profile lookup site, not something I made up. It
+shows gamerscore, recent games, and achievements if his profile is public.
 
-  // CRITICAL:
-  // Never intercept or cache Supabase, CardSight, signed image URLs,
-  // authentication requests, or any other cross-origin network traffic.
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+**What this isn't:** a live gamerscore/recently-played widget inside the
+app. That's genuinely possible — there's a real, currently-active
+third-party service (OpenXBL / xbl.io) that a lot of hobby Xbox apps use,
+personal API key, same effort tier as the CardSight key you two already
+set up. I looked into it and it's legitimate, just tabled for now since
+you picked the simple version. Say the word whenever you want to revisit
+it — filtered to just his sports titles (Madden, NBA 2K, MLB The Show,
+etc.) it'd fit right in next to the sports ticker and card news.
 
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request, { cache: "no-store" })
-        .then(response => {
-          if (response.ok) {
-            const copy = response.clone();
+One honest note on the link itself: Microsoft's own official public
+profile URL format has changed more than once over the years and I
+couldn't verify a current one I'd trust to just work, so I used the
+third-party lookup site instead — confirmed the URL pattern actually
+resolves before shipping it, same as every other link/ID in this project.
 
-            caches.open(CACHE_NAME).then(cache =>
-              cache.put("./index.html", copy)
-            );
-          }
+## Before you commit
 
-          return response;
-        })
-        .catch(() => caches.match("./index.html"))
-    );
+1. Type a gamertag into the new field on Home's Spotlight panel and
+   confirm the link updates to that gamertag's profile.
+2. Leave it blank and confirm the link still works (falls back to the
+   general lookup page rather than a broken link).
+3. Everything else — unchanged this round, no need to re-test unless
+   you want to.
 
-    return;
-  }
+## Suggested commit
 
-  const isAppAsset =
-    url.pathname.includes("/css/") ||
-    url.pathname.includes("/js/") ||
-    url.pathname.includes("/icons/") ||
-    url.pathname.endsWith("/manifest.webmanifest");
-
-  if (!isAppAsset) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request, { cache: "no-store" })
-      .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-
-          caches.open(CACHE_NAME).then(cache =>
-            cache.put(event.request, copy)
-          );
-        }
-
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+`Add Xbox gamertag quick-link to Spotlight panel`
