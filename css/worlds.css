@@ -61,6 +61,18 @@
   border-top: 1px solid var(--border);
 }
 
+.spotlight-xbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: center;
+  margin-top: .6rem;
+}
+.spotlight-xbox-row input {
+  flex: 1;
+  min-width: 140px;
+}
+
 /* Box score dialog */
 .box-score-dialog {
   max-width: 420px;

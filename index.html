@@ -1,130 +1,1110 @@
-// Rookie Vault - Music panel
-// Uses Spotify's public embed player - no login, no API key, no OAuth.
-// This only shows whatever playlist is picked; it is not "what Brenton is
-// currently playing" (that would need the full OAuth flow, tabled for now).
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171317">
+  <meta name="description" content="A private family sports card collection app.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/app.css?v=28">
+  <link rel="stylesheet" href="./css/cardsight-diagnostics.css?v=28">
+  <link rel="stylesheet" href="./css/sports-feed.css?v=28">
+  <link rel="stylesheet" href="./css/worlds.css?v=28">
+  <title>Rookie Vault</title>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Your Digital Card Collection</p>
+      <h1>Rookie Vault</h1>
+    </div>
 
-const PLAYLISTS_KEY = "rookie-vault-music-playlists";
+    <div class="topbar-actions">
+      <button id="themeToggle" class="icon-button" type="button" aria-label="Switch theme" title="Switch theme">
+        <span id="themeIcon" aria-hidden="true">☀</span>
+      </button>
+      <button id="logoutButton" class="button button-secondary hidden" type="button">Sign out</button>
+    </div>
+  </header>
 
-const DEFAULT_PLAYLISTS = [
-  { id: "37i9dQZF1DXcBWIGoYBM5M", label: "Today's Top Hits" },
-  { id: "37i9dQZF1DX0XUsuxWHRQd", label: "RapCaviar" }
-];
+  <main class="shell">
+    <section id="setupPanel" class="panel hidden">
+      <h2>One small setup step</h2>
+      <p>Copy <code>js/config.example.js</code> to <code>js/config.js</code>, then add the public Supabase URL and anonymous key.</p>
+    </section>
 
-let activeIndex = 0;
+    <section id="authPanel" class="panel auth-panel">
+      <h2>Open your vault</h2>
+      <p class="muted">Sign in with your account.</p>
 
-const elements = {
-  panel: document.querySelector("#musicFeedPanel"),
-  tabs: document.querySelector("#musicFeedTabs"),
-  frame: document.querySelector("#musicFeedFrame"),
-  settingsButton: document.querySelector("#musicFeedSettingsButton"),
-  settings: document.querySelector("#musicFeedSettings"),
-  urlInput: document.querySelector("#musicFeedUrlInput"),
-  labelInput: document.querySelector("#musicFeedLabelInput"),
-  addButton: document.querySelector("#addMusicPlaylistButton"),
-  removeButton: document.querySelector("#removeMusicPlaylistButton"),
-  message: document.querySelector("#musicFeedMessage")
-};
+      <form id="authForm" class="stack">
+        <label>Email
+          <input id="emailInput" type="email" autocomplete="email" required>
+        </label>
 
-export function initMusicFeed() {
-  if (!elements.panel) return;
+        <label>Password
+          <input id="passwordInput" type="password" autocomplete="current-password" minlength="8" required>
+        </label>
 
-  elements.settingsButton?.addEventListener("click", () => {
-    elements.settings.classList.toggle("hidden");
-  });
+        <div class="button-row">
+          <button class="button" type="submit">Sign in</button>
+          <button id="signupButton" class="button button-secondary" type="button">Create account</button>
+        </div>
+      </form>
 
-  elements.addButton?.addEventListener("click", addPlaylist);
-  elements.removeButton?.addEventListener("click", removeActivePlaylist);
+      <p id="authMessage" class="message" aria-live="polite"></p>
+    </section>
 
-  renderTabs();
-  renderFrame();
-}
+    <section id="appPanel" class="hidden">
+      <section id="homeView" class="app-view">
+        <section class="welcome-card">
+          <div>
+            <p class="eyebrow">Welcome to your vault</p>
+            <h2>Brenton's Collection</h2>
+            <p class="muted">A quick look at what is inside your collection.</p>
+          </div>
+          <div class="welcome-actions">
+            <button id="homeAddButton" class="button" type="button">Add a card</button>
+            <button id="homeSetsButton" class="button button-secondary" type="button">Set Tracker</button>
+            <button id="homeShowButton" class="button button-secondary" type="button">Card Show Mode</button>
+          </div>
+        </section>
 
-function getPlaylists() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || "null");
-    if (Array.isArray(stored) && stored.length) return stored;
-  } catch {
-    // fall through to defaults
-  }
-  return DEFAULT_PLAYLISTS;
-}
+        <section class="panel spotlight-panel" id="spotlightPanel">
+          <div id="milestoneBanner" class="milestone-banner hidden">
+            <span id="milestoneBannerText"></span>
+            <button id="milestoneBannerDismiss" class="icon-button" type="button" aria-label="Dismiss">✕</button>
+          </div>
 
-function savePlaylists(list) {
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(list));
-}
+          <div id="spotlightCard" class="spotlight-card"></div>
+          <p id="spotlightEmpty" class="empty-state hidden">Add a card to see it spotlighted here.</p>
 
-function extractPlaylistId(input) {
-  const trimmed = input.trim();
+          <div class="spotlight-quick-links">
+            <a class="pricing-link" href="https://www.ebay.com/sch/i.html?_nkw=sports+cards" target="_blank" rel="noopener noreferrer">Shop sports cards on eBay</a>
+            <a class="pricing-link" href="https://www.psacard.com/cert" target="_blank" rel="noopener noreferrer">Verify a PSA cert</a>
+          </div>
 
-  // Accept a raw ID, a full open.spotify.com URL, or an embed URL.
-  const match = trimmed.match(/playlist\/([a-zA-Z0-9]+)/);
-  if (match) return match[1];
+          <div class="spotlight-xbox-row">
+            <input id="xboxGamertagInput" type="text" placeholder="Xbox gamertag">
+            <a id="xboxProfileLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">Xbox profile</a>
+          </div>
+        </section>
 
-  if (/^[a-zA-Z0-9]{15,30}$/.test(trimmed)) return trimmed;
+        <section class="panel sports-feed-panel" id="sportsFeedPanel">
+          <div class="diagnostic-heading">
+            <div>
+              <h4>Live scores &amp; news</h4>
+              <p class="muted">MLB, NFL, NBA, and NHL — filtered to your favorite teams and players.</p>
+            </div>
+            <div class="diagnostic-actions" style="margin-top:0">
+              <button id="sportsFeedSettingsButton" class="button button-secondary" type="button">Teams &amp; players</button>
+              <button id="refreshSportsFeedButton" class="button button-secondary" type="button">Refresh</button>
+            </div>
+          </div>
 
-  return null;
-}
+          <details id="sportsFeedSettings" class="cardsight-settings hidden">
+            <summary>Favorite teams &amp; players</summary>
+            <label>Comma-separated team names (e.g. Yankees, Chiefs, Lakers)
+              <input id="sportsFeedTeamsInput" type="text" placeholder="Yankees, Chiefs">
+            </label>
+            <label>Comma-separated players to watch (used for news/ticker highlights, not scores)
+              <input id="sportsFeedPlayersInput" type="text" placeholder="Victor Wembanyama, CJ Stroud">
+            </label>
+            <div class="diagnostic-actions">
+              <button id="saveSportsFeedTeamsButton" class="button" type="button">Save</button>
+            </div>
+          </details>
 
-function addPlaylist() {
-  const id = extractPlaylistId(elements.urlInput.value || "");
+          <div id="sportsFeedScores" class="sports-feed-scores"></div>
+          <div id="sportsFeedNews" class="sports-feed-news"></div>
+          <p id="sportsFeedMessage" class="muted small"></p>
+        </section>
 
-  if (!id) {
-    elements.message.textContent = "Paste a Spotify playlist link (or its ID).";
-    return;
-  }
+        <section class="panel music-feed-panel" id="musicFeedPanel">
+          <div class="diagnostic-heading">
+            <div>
+              <h4>Soundtrack</h4>
+              <p class="muted">Brenton's playlists, right here — no login needed.</p>
+            </div>
+            <button id="musicFeedSettingsButton" class="button button-secondary" type="button">Edit playlists</button>
+          </div>
 
-  const label = elements.labelInput.value.trim() || "Playlist";
-  const playlists = getPlaylists();
-  playlists.push({ id, label });
-  savePlaylists(playlists);
+          <details id="musicFeedSettings" class="cardsight-settings hidden">
+            <summary>Add a playlist</summary>
+            <label>Spotify playlist link
+              <input id="musicFeedUrlInput" type="text" placeholder="https://open.spotify.com/playlist/...">
+            </label>
+            <label>Label
+              <input id="musicFeedLabelInput" type="text" placeholder="Brenton's picks">
+            </label>
+            <div class="diagnostic-actions">
+              <button id="addMusicPlaylistButton" class="button" type="button">Add</button>
+              <button id="removeMusicPlaylistButton" class="button button-secondary" type="button">Remove current</button>
+            </div>
+          </details>
 
-  elements.urlInput.value = "";
-  elements.labelInput.value = "";
-  activeIndex = playlists.length - 1;
+          <div id="musicFeedTabs" class="filter-row"></div>
+          <iframe
+            id="musicFeedFrame"
+            class="music-feed-frame"
+            title="Spotify playlist"
+            style="border-radius:12px"
+            width="100%"
+            height="152"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          ></iframe>
+          <p id="musicFeedMessage" class="muted small"></p>
+        </section>
 
-  renderTabs();
-  renderFrame();
-  elements.message.textContent = `Added "${label}".`;
-}
+        <section class="panel video-feed-panel" id="videoFeedPanel">
+          <div class="diagnostic-heading">
+            <div>
+              <h4>Hobby video</h4>
+              <p class="muted">Box breaks, pack rips, and hobby content.</p>
+            </div>
+            <button id="videoFeedSettingsButton" class="button button-secondary" type="button">Edit channels</button>
+          </div>
 
-function removeActivePlaylist() {
-  const playlists = getPlaylists();
-  if (playlists.length <= 1) {
-    elements.message.textContent = "Keep at least one playlist.";
-    return;
-  }
+          <details id="videoFeedSettings" class="cardsight-settings hidden">
+            <summary>Add a channel or playlist</summary>
+            <label>YouTube playlist, channel, or video link
+              <input id="videoFeedUrlInput" type="text" placeholder="https://www.youtube.com/channel/... or a playlist link">
+            </label>
+            <label>Label
+              <input id="videoFeedLabelInput" type="text" placeholder="Channel name">
+            </label>
+            <div class="diagnostic-actions">
+              <button id="addVideoPlaylistButton" class="button" type="button">Add</button>
+              <button id="removeVideoPlaylistButton" class="button button-secondary" type="button">Remove current</button>
+            </div>
+          </details>
 
-  playlists.splice(activeIndex, 1);
-  savePlaylists(playlists);
-  activeIndex = 0;
+          <div id="videoFeedTabs" class="filter-row"></div>
+          <iframe
+            id="videoFeedFrame"
+            class="video-feed-frame"
+            title="YouTube video"
+            width="100%"
+            height="220"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            loading="lazy"
+            allowfullscreen
+          ></iframe>
+          <p id="videoFeedMessage" class="muted small"></p>
+        </section>
 
-  renderTabs();
-  renderFrame();
-}
+        <section class="panel hobby-news-panel" id="hobbyNewsPanel">
+          <div class="diagnostic-heading">
+            <div>
+              <h4>Card hobby news</h4>
+              <p class="muted">Latest from the sports card press.</p>
+            </div>
+            <button id="refreshHobbyNewsButton" class="button button-secondary" type="button">Refresh</button>
+          </div>
+          <div id="hobbyNewsList" class="sports-feed-news"></div>
+          <p id="hobbyNewsMessage" class="muted small"></p>
+        </section>
+      </section>
 
-function renderTabs() {
-  const playlists = getPlaylists();
-  elements.tabs.replaceChildren();
+      <section id="addView" class="app-view hidden">
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p id="formEyebrow" class="eyebrow accent-text">Add to collection</p>
+            <h2 id="formTitle">New card</h2>
+          </div>
+          <button id="cancelEditButton" class="button button-secondary hidden" type="button">Cancel edit</button>
+        </div>
 
-  playlists.forEach((playlist, index) => {
-    const tab = document.createElement("button");
-    tab.type = "button";
-    tab.className = "filter-chip" + (index === activeIndex ? " active" : "");
-    tab.textContent = playlist.label;
-    tab.addEventListener("click", () => {
-      activeIndex = index;
-      renderTabs();
-      renderFrame();
-    });
-    elements.tabs.append(tab);
-  });
-}
+        <div id="editNotice" class="edit-notice hidden">
+          Editing an existing card. Current photos will remain unless you choose replacements.
+        </div>
 
-function renderFrame() {
-  const playlists = getPlaylists();
-  const playlist = playlists[activeIndex] || playlists[0];
-  if (!playlist) return;
+        <form id="cardForm" class="form-grid">
+          <label>Player
+            <input id="playerInput" required maxlength="120">
+          </label>
 
-  elements.frame.src =
-    `https://open.spotify.com/embed/playlist/${playlist.id}?utm_source=generator&theme=0`;
-}
+          <label>Sport
+            <select id="sportInput">
+              <option>Baseball</option>
+              <option>Basketball</option>
+              <option>Football</option>
+              <option>Hockey</option>
+              <option>Soccer</option>
+              <option>Other</option>
+            </select>
+          </label>
+
+          <label>Year
+            <input id="yearInput" inputmode="numeric" maxlength="4" placeholder="2024">
+          </label>
+
+          <label>Brand
+            <input id="brandInput" maxlength="100" placeholder="Topps, Panini...">
+          </label>
+
+          <label>Set
+            <input id="setInput" maxlength="120">
+          </label>
+
+          <label>Card number
+            <input id="cardNumberInput" maxlength="40">
+          </label>
+
+          <label>Estimated value
+            <input id="valueInput" type="number" min="0" step="0.01" inputmode="decimal">
+          </label>
+
+          <label>Status
+            <select id="statusInput">
+              <option value="keep">Keep</option>
+              <option value="trade">For trade</option>
+              <option value="duplicate">Duplicate</option>
+              <option value="want">Want list</option>
+            </select>
+          </label>
+
+          <label id="wishlistPriorityLabel" class="hidden">Wishlist priority
+            <select id="wishlistPriorityInput">
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
+          <label id="wishlistTargetLabel" class="hidden">Target price
+            <input id="wishlistTargetInput" type="number" min="0" step="0.01" inputmode="decimal">
+          </label>
+
+          <fieldset class="wide collector-fieldset">
+            <legend>Collector details</legend>
+
+            <div class="collector-grid">
+              <label class="check-card">
+                <input id="rookieInput" type="checkbox">
+                <span>Rookie card</span>
+              </label>
+
+              <label class="check-card">
+                <input id="autographInput" type="checkbox">
+                <span>Autograph</span>
+              </label>
+
+              <label class="check-card">
+                <input id="memorabiliaInput" type="checkbox">
+                <span>Patch / memorabilia</span>
+              </label>
+
+              <label class="check-card">
+                <input id="numberedInput" type="checkbox">
+                <span>Serial numbered</span>
+              </label>
+            </div>
+
+            <div id="numberedFields" class="form-grid nested-fields hidden">
+              <label>Serial number
+                <input id="serialNumberInput" inputmode="numeric" placeholder="23">
+              </label>
+              <label>Print run
+                <input id="printRunInput" inputmode="numeric" placeholder="99">
+              </label>
+            </div>
+
+            <div class="form-grid nested-fields">
+              <label>Parallel / variation
+                <input id="parallelInput" maxlength="120" placeholder="Silver, Refractor, Gold...">
+              </label>
+
+              <label>Quantity
+                <input id="quantityInput" type="number" min="1" step="1" value="1" inputmode="numeric">
+              </label>
+
+              <label>Condition
+                <select id="conditionInput">
+                  <option value="raw">Raw</option>
+                  <option value="graded">Graded</option>
+                </select>
+              </label>
+
+              <label>Purchase price
+                <input id="purchasePriceInput" type="number" min="0" step="0.01" inputmode="decimal">
+              </label>
+
+              <label>Purchase date
+                <input id="purchaseDateInput" type="date">
+              </label>
+            </div>
+
+            <div id="gradingFields" class="form-grid nested-fields hidden">
+              <label>Grading company
+                <select id="gradingCompanyInput">
+                  <option value="">Select</option>
+                  <option>PSA</option>
+                  <option>BGS</option>
+                  <option>SGC</option>
+                  <option>CGC</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <label>Grade
+                <input id="gradeInput" maxlength="20" placeholder="10">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="wide photo-fieldset">
+            <legend>Card photos</legend>
+            <div class="photo-input-grid">
+              <label class="photo-picker">
+                <span>Front photo</span>
+                <input id="frontPhotoInput" type="file" accept="image/*" capture="environment">
+                <span class="photo-action">Take or choose front</span>
+                <img id="frontPreview" class="photo-preview hidden" alt="Front photo preview">
+              </label>
+
+              <label class="photo-picker">
+                <span>Back photo</span>
+                <input id="backPhotoInput" type="file" accept="image/*" capture="environment">
+                <span class="photo-action">Take or choose back</span>
+                <img id="backPreview" class="photo-preview hidden" alt="Back photo preview">
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="wide">Storage location
+            <input id="locationInput" maxlength="120" placeholder="Binder 1, Box A...">
+          </label>
+
+          <label class="wide">Notes
+            <textarea id="notesInput" rows="3" maxlength="1000"></textarea>
+          </label>
+
+          <div class="wide form-actions">
+            <button id="saveCardButton" class="button" type="submit">Save card</button>
+            <button id="cancelEditButtonBottom" class="button button-secondary hidden" type="button">Cancel edit</button>
+          </div>
+        </form>
+
+        <p id="cardMessage" class="message" aria-live="polite"></p>
+      </section>
+      </section>
+
+      <section id="collectionView" class="app-view hidden">
+      <section class="panel collection-panel">
+        <div class="collection-header">
+          <div>
+            <p class="eyebrow accent-text">Collection</p>
+            <h2 id="collectionTitle">Your cards</h2>
+            <p id="resultCount" class="muted result-count">0 cards shown</p>
+          </div>
+
+          <div class="collection-tools">
+            <div class="view-toggle" role="group" aria-label="Collection view">
+              <button id="activeViewButton" class="filter-chip active" type="button">Collection</button>
+              <button id="trashViewButton" class="filter-chip" type="button">
+                Trash <span id="trashCount" class="count-bubble">0</span>
+              </button>
+            </div>
+            <input id="searchInput" class="search" type="search" placeholder="Search player, set, brand...">
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <span class="filter-label">Sport</span>
+          <div id="sportFilters" class="filter-row" role="group" aria-label="Filter by sport">
+            <button class="filter-chip active" type="button" data-sport="all">All</button>
+            <button class="filter-chip" type="button" data-sport="Baseball">Baseball</button>
+            <button class="filter-chip" type="button" data-sport="Basketball">Basketball</button>
+            <button class="filter-chip" type="button" data-sport="Football">Football</button>
+            <button class="filter-chip" type="button" data-sport="Hockey">Hockey</button>
+            <button class="filter-chip" type="button" data-sport="Soccer">Soccer</button>
+            <button class="filter-chip" type="button" data-sport="Other">Other</button>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <span class="filter-label">Status</span>
+          <div id="statusFilters" class="filter-row" role="group" aria-label="Filter by status">
+            <button class="filter-chip active" type="button" data-status="all">All</button>
+            <button class="filter-chip" type="button" data-status="keep">Keep</button>
+            <button class="filter-chip" type="button" data-status="trade">Trade</button>
+            <button class="filter-chip" type="button" data-status="duplicate">Duplicates</button>
+            <button class="filter-chip" type="button" data-status="want">Want list</button>
+          </div>
+        </div>
+
+        <div id="cardsGrid" class="cards-grid"></div>
+        <p id="emptyState" class="empty-state">No cards match these filters.</p>
+      </section>
+      </section>
+
+
+
+
+
+      <section id="showView" class="app-view hidden">
+        <section class="panel show-mode-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Fast collector view</p>
+              <h2>Card Show Mode</h2>
+              <p class="muted">Large photos, quick filters, wishlist access, and trade cards ready for the show floor.</p>
+            </div>
+            <button id="exitShowModeButton" class="button button-secondary" type="button">Exit show mode</button>
+          </div>
+
+          <div class="show-kpi-grid">
+            <article class="show-kpi">
+              <span>Trade cards</span>
+              <strong id="showTradeCount">0</strong>
+            </article>
+            <article class="show-kpi">
+              <span>Duplicates</span>
+              <strong id="showDuplicateCount">0</strong>
+            </article>
+            <article class="show-kpi">
+              <span>Wishlist</span>
+              <strong id="showWishlistCount">0</strong>
+            </article>
+            <article class="show-kpi">
+              <span>High value</span>
+              <strong id="showHighValueCount">0</strong>
+            </article>
+          </div>
+
+          <div class="show-toolbar">
+            <div class="filter-row" id="showModeFilters">
+              <button class="filter-chip active" type="button" data-show-filter="trade">Trade</button>
+              <button class="filter-chip" type="button" data-show-filter="duplicate">Duplicates</button>
+              <button class="filter-chip" type="button" data-show-filter="want">Wishlist</button>
+              <button class="filter-chip" type="button" data-show-filter="high-value">High value</button>
+              <button class="filter-chip" type="button" data-show-filter="all">All cards</button>
+            </div>
+
+            <input id="showModeSearchInput" class="search" type="search" placeholder="Fast search...">
+          </div>
+
+          <div id="showModeGrid" class="show-mode-grid"></div>
+          <p id="showModeEmpty" class="empty-state">No cards match this show filter.</p>
+        </section>
+      </section>
+
+      <section id="setsView" class="app-view hidden">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Collection goals</p>
+              <h2>Set Tracker</h2>
+              <p class="muted">Track numbered base sets automatically from cards already in the vault.</p>
+            </div>
+            <button id="newSetGoalButton" class="button" type="button">New set goal</button>
+          </div>
+
+          <form id="setGoalForm" class="set-goal-form hidden">
+            <input id="setGoalIdInput" type="hidden">
+
+            <label>Goal name
+              <input id="setGoalNameInput" required maxlength="140" placeholder="2024 Topps Chrome Base Set">
+            </label>
+
+            <label>Year
+              <input id="setGoalYearInput" type="number" min="1900" max="2200" required inputmode="numeric">
+            </label>
+
+            <label>Brand
+              <input id="setGoalBrandInput" required maxlength="100" placeholder="Topps">
+            </label>
+
+            <label>Set
+              <input id="setGoalSetInput" required maxlength="120" placeholder="Chrome">
+            </label>
+
+            <label>Total cards in set
+              <input id="setGoalTotalInput" type="number" min="1" max="5000" required inputmode="numeric" placeholder="220">
+            </label>
+
+            <label>Starting number
+              <input id="setGoalStartInput" type="number" min="0" max="9999" value="1" required inputmode="numeric">
+            </label>
+
+            <div class="wide form-actions">
+              <button id="saveSetGoalButton" class="button" type="submit">Save set goal</button>
+              <button id="cancelSetGoalButton" class="button button-secondary" type="button">Cancel</button>
+            </div>
+          </form>
+
+          <p id="setGoalMessage" class="message" aria-live="polite"></p>
+
+          <div id="setGoalsGrid" class="set-goals-grid"></div>
+          <p id="setGoalsEmpty" class="empty-state">No set goals yet.</p>
+        </section>
+      </section>
+
+      <section id="scanView" class="app-view hidden">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Fast card entry</p>
+              <h2>Find a Card</h2>
+              <p class="muted">Search the CardSight catalog first, select the exact card, then add front and back photos in the normal Add Card form.</p>
+            </div>
+            <button id="resetScanButton" class="button button-secondary" type="button">Start over</button>
+          </div>
+
+
+          <section class="lookup-first-panel">
+            <div class="lookup-step-heading">
+              <div>
+                <span class="lookup-step-number">1</span>
+                <div>
+                  <p class="eyebrow accent-text">Search the catalog</p>
+                  <h3>Who is on the card?</h3>
+                </div>
+              </div>
+              <span id="lookupKeyStatus" class="research-date">CardSight key required</span>
+            </div>
+
+            <form id="lookupCardForm" class="lookup-card-form">
+              <label>Player name
+                <input id="lookupPlayerInput" required maxlength="120" autocomplete="off" placeholder="Patrick Mahomes">
+              </label>
+
+              <label>Card year
+                <input id="lookupYearInput" type="number" min="1900" max="2200" inputmode="numeric" placeholder="2023">
+              </label>
+
+              <label>Sport
+                <select id="lookupSportInput">
+                  <option value="">Any supported sport</option>
+                  <option value="baseball">Baseball</option>
+                  <option value="football">Football</option>
+                  <option value="basketball">Basketball</option>
+                  <option value="hockey">Hockey</option>
+                </select>
+              </label>
+
+              <label>Brand or set <span class="muted">(optional)</span>
+                <input id="lookupBrandInput" maxlength="120" placeholder="Prizm, Topps Chrome...">
+              </label>
+
+              <button id="lookupSearchButton" class="button lookup-search-button" type="submit">
+                Search CardSight
+              </button>
+            </form>
+
+            <div class="lookup-search-summary">
+              <p id="lookupSearchMessage" class="muted">Enter at least a player name. Adding a year usually gives much better results.</p>
+            </div>
+
+            <div id="lookupResults" class="lookup-results"></div>
+            <p id="lookupResultsEmpty" class="empty-state hidden">No matching cards were returned.</p>
+          </section>
+
+          <details class="optional-scan-tools">
+            <summary>Optional photo and OCR tools</summary>
+            <p class="muted">These tools remain available for difficult cards, but catalog search is now the recommended starting point.</p>
+
+          <div class="scan-layout">
+            <section class="scan-box">
+              <div class="scan-photo-grid">
+                <label class="scan-picker">Front photo
+                  <input id="scanFrontInput" type="file" accept="image/*" capture="environment">
+                  <span class="scan-photo-action">Take or choose front</span>
+                  <img id="scanFrontPreview" class="scan-preview hidden" alt="Front scan preview">
+                </label>
+                <label class="scan-picker">Back photo
+                  <input id="scanBackInput" type="file" accept="image/*" capture="environment">
+                  <span class="scan-photo-action">Take or choose back</span>
+                  <img id="scanBackPreview" class="scan-preview hidden" alt="Back scan preview">
+                </label>
+              </div>
+              <button id="analyzeCardButton" class="button scan-main-button" type="button">Analyze card</button>
+              <div id="scanProgressWrap" class="hidden">
+                <div class="scan-progress-track"><div id="scanProgressBar" class="scan-progress-bar"></div></div>
+                <p id="scanProgressText" class="muted">Preparing OCR...</p>
+              </div>
+              <p class="scan-note">OCR runs in the browser. Photos are not saved until the reviewed card is saved.</p>
+            </section>
+
+            <section class="scan-box">
+              <div id="scanPlaceholder" class="scan-placeholder">
+                <strong>Ready to scan</strong>
+                <p>A straight, glare-free photo works best. The back often has the clearest card number.</p>
+              </div>
+
+              <div id="scanResults" class="hidden">
+                <div class="scan-result-heading">
+                  <div><p class="eyebrow accent-text">Suggested details</p><h3>Review before using</h3></div>
+                  <span id="scanConfidenceBadge" class="research-date">Low confidence</span>
+                </div>
+
+                <div class="scan-suggestion-grid">
+                  <label>Player<input id="scanPlayerSuggestion" maxlength="120"></label>
+                  <label>Year<input id="scanYearSuggestion" maxlength="4" inputmode="numeric"></label>
+                  <label>Brand<input id="scanBrandSuggestion" maxlength="100"></label>
+                  <label>Set<input id="scanSetSuggestion" maxlength="120"></label>
+                  <label>Card number<input id="scanNumberSuggestion" maxlength="40"></label>
+                  <label>Sport<select id="scanSportSuggestion"><option>Baseball</option><option>Basketball</option><option>Football</option><option>Hockey</option><option>Soccer</option><option>Other</option></select></label>
+                  <label>Parallel / variation<input id="scanParallelSuggestion" maxlength="120"></label>
+                  <label>Suggested value<input id="scanValueSuggestion" type="number" min="0" step="0.01" inputmode="decimal"></label>
+                  <label class="scan-check"><input id="scanRookieSuggestion" type="checkbox"><span>Possible rookie card</span></label>
+                </div>
+
+                <div id="duplicateWarning" class="duplicate-warning hidden">
+                  <strong>Possible duplicate found</strong>
+                  <p id="duplicateWarningText"></p>
+                  <button id="increaseDuplicateButton" class="button button-secondary" type="button">Increase existing quantity</button>
+                </div>
+
+                <div class="scan-actions">
+                  <button id="useScanSuggestionsButton" class="button" type="button">Use these details</button>
+                  <button id="scanPricingSearchButton" class="button button-secondary" type="button">Search sold listings</button>
+                </div>
+
+                <details class="ocr-details">
+                  <summary>View text read from card</summary>
+                  <div class="ocr-text-grid">
+                    <section><h4>Front</h4><pre id="scanFrontText"></pre></section>
+                    <section><h4>Back</h4><pre id="scanBackText"></pre></section>
+                  </div>
+                </details>
+              </div>
+            </section>
+          </div>
+
+          <section class="cardsight-panel">
+            <div class="cardsight-heading">
+              <div>
+                <p class="eyebrow accent-text">Optional catalog intelligence</p>
+                <h3>CardSight Assistant</h3>
+                <p class="muted">Use photo identification or search the structured catalog when OCR is uncertain.</p>
+              </div>
+              <span id="cardSightStatusBadge" class="research-date">API key not set</span>
+            </div>
+            <details id="cardSightSettings" class="cardsight-settings">
+              <summary>CardSight API settings</summary>
+              <div class="cardsight-key-row">
+                <label>API key<input id="cardSightApiKeyInput" type="password" autocomplete="off" placeholder="Paste CardSight API key"></label>
+                <button id="saveCardSightKeyButton" class="button" type="button">Save key</button>
+                <button id="clearCardSightKeyButton" class="button button-secondary" type="button">Clear</button>
+              </div>
+              
+              <p class="muted cardsight-key-note">Saved only in this browser on this device—not GitHub or Supabase.</p>
+
+              <section class="cardsight-diagnostics">
+                <div class="diagnostic-heading">
+                  <div>
+                    <h4>Connection diagnostics</h4>
+                    <p class="muted">Tests the API, saved key, account access, autocomplete, and a known Aaron Judge catalog search.</p>
+                  </div>
+                  <button id="runCardSightDiagnosticsButton" class="button" type="button">Run diagnostics</button>
+                </div>
+
+                <div id="cardSightDiagnosticResults" class="diagnostic-results"></div>
+
+                <div class="diagnostic-actions">
+                  <button id="copyCardSightDiagnosticsButton" class="button button-secondary hidden" type="button">Copy report</button>
+                  <button id="clearCardSightDiagnosticsButton" class="button button-secondary hidden" type="button">Clear report</button>
+                </div>
+
+                <details id="cardSightRawDiagnostics" class="raw-diagnostics hidden">
+                  <summary>Technical details</summary>
+                  <pre id="cardSightRawDiagnosticsText"></pre>
+                </details>
+              </section>
+            </details>
+            <div class="cardsight-actions">
+              <button id="identifyWithCardSightButton" class="button" type="button">Identify front photo</button>
+              <div class="cardsight-search-box">
+                <input id="cardSightSearchInput" type="search" placeholder="Player or card description">
+                <button id="searchCardSightButton" class="button button-secondary" type="button">Search catalog</button>
+              </div>
+            </div>
+            <p id="cardSightMessage" class="message" aria-live="polite"></p>
+            <div id="cardSightResults" class="cardsight-results"></div>
+          </section>
+
+          </details>
+
+          <p id="scanMessage" class="message" aria-live="polite"></p>
+        </section>
+      </section>
+
+      <section id="ledgerView" class="app-view hidden">
+        <section class="panel ledger-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Inventory</p>
+              <h2>Vault Ledger</h2>
+              <p class="muted">Value, status, and eBay research for every card in one place.</p>
+            </div>
+            <div class="ledger-view-toggle">
+              <button id="ledgerTableViewButton" class="button button-secondary active" type="button">Table</button>
+              <button id="ledgerCardViewButton" class="button button-secondary" type="button">Cards</button>
+            </div>
+          </div>
+
+          <div class="show-kpi-grid">
+            <article class="show-kpi">
+              <span>Total value</span>
+              <strong id="ledgerTotalValue">$0.00</strong>
+            </article>
+            <article class="show-kpi">
+              <span>This week</span>
+              <strong id="ledgerWeekChange">New</strong>
+            </article>
+            <article class="show-kpi">
+              <span>Sell candidates</span>
+              <strong id="ledgerSellCandidates">0</strong>
+            </article>
+            <article class="show-kpi">
+              <span>Needs price check</span>
+              <strong id="ledgerNeedsCheck">0</strong>
+            </article>
+          </div>
+
+          <div id="ledgerInsights" class="ledger-insights"></div>
+
+          <div class="show-toolbar">
+            <div class="filter-row" id="ledgerStatusFilters">
+              <button class="filter-chip active" type="button" data-ledger-status="all">All</button>
+              <button class="filter-chip" type="button" data-ledger-status="keep">Keep</button>
+              <button class="filter-chip" type="button" data-ledger-status="trade">For trade</button>
+              <button class="filter-chip" type="button" data-ledger-status="duplicate">Duplicate</button>
+              <button class="filter-chip" type="button" data-ledger-status="want">Want list</button>
+            </div>
+
+            <input id="ledgerSearchInput" class="search" type="search" placeholder="Search inventory...">
+
+            <select id="ledgerSortSelect">
+              <option value="value-desc">Value: high to low</option>
+              <option value="value-asc">Value: low to high</option>
+              <option value="needs-check">Needs price check first</option>
+              <option value="recent">Recently added</option>
+            </select>
+          </div>
+
+          <div id="ledgerTable" class="ledger-table"></div>
+          <div id="ledgerCards" class="ledger-card-grid hidden"></div>
+          <p id="ledgerEmpty" class="empty-state hidden">No cards match this filter.</p>
+        </section>
+
+        <section class="stats-grid">
+          <article class="stat-card">
+            <span>Total cards</span>
+            <strong id="totalCards">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Estimated value</span>
+            <strong id="totalValue">$0.00</strong>
+          </article>
+          <article class="stat-card">
+            <span>For trade</span>
+            <strong id="tradeCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Rookie cards</span>
+            <strong id="rookieCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Autographs</span>
+            <strong id="autographCount">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Graded cards</span>
+            <strong id="gradedCount">0</strong>
+          </article>
+        </section>
+
+        <section class="health-grid">
+          <article class="health-card">
+            <span>Numbered cards</span>
+            <strong id="numberedCount">0</strong>
+          </article>
+          <article class="health-card">
+            <span>Missing values</span>
+            <strong id="missingValueCount">0</strong>
+          </article>
+          <article class="health-card">
+            <span>Missing front photos</span>
+            <strong id="missingPhotoCount">0</strong>
+          </article>
+        </section>
+
+        <section class="panel backup-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow accent-text">Safety first</p>
+              <h2>Backup Center</h2>
+              <p class="muted">Download copies of Brenton's collection to keep outside the app.</p>
+            </div>
+            <div class="backup-status">
+              <span>Last backup</span>
+              <strong id="lastBackupText">Never</strong>
+            </div>
+          </div>
+
+          <div class="backup-grid">
+            <article class="backup-card">
+              <div>
+                <h3>CSV Collection</h3>
+                <p>Spreadsheet-friendly export of all active cards and collector details.</p>
+              </div>
+              <button id="exportCsvButton" class="button" type="button">Download CSV</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Complete JSON Backup</h3>
+                <p>Full active and trashed card records, including photo storage paths.</p>
+              </div>
+              <button id="exportJsonButton" class="button" type="button">Download JSON</button>
+            </article>
+
+            <article class="backup-card">
+              <div>
+                <h3>Collection Summary</h3>
+                <p>A readable text report with totals, values, sports and collector highlights.</p>
+              </div>
+              <button id="exportSummaryButton" class="button" type="button">Download Summary</button>
+            </article>
+          </div>
+
+          <p id="backupMessage" class="message" aria-live="polite"></p>
+        </section>
+      </section>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-button active" type="button" data-view="home">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span>Home</span>
+        </button>
+        <button class="nav-button" type="button" data-view="collection">
+          <span class="nav-icon" aria-hidden="true">▦</span>
+          <span>Collection</span>
+        </button>
+        <button class="nav-button" type="button" data-view="scan">
+          <span class="nav-icon" aria-hidden="true">⌾</span>
+          <span>Lookup</span>
+        </button>
+        <button class="nav-button" type="button" data-view="ledger">
+          <span class="nav-icon" aria-hidden="true">▤</span>
+          <span>Ledger</span>
+        </button>
+        <button class="nav-button" type="button" data-view="trash">
+          <span class="nav-icon" aria-hidden="true">♲</span>
+          <span>Trash</span>
+        </button>
+      </nav>
+    </section>
+  </main>
+
+
+  <dialog id="setDialog" class="card-dialog set-dialog">
+    <button id="closeSetDialogButton" class="dialog-close" type="button" aria-label="Close set details">×</button>
+
+    <div class="set-detail-content">
+      <p class="eyebrow accent-text">Set progress</p>
+      <h2 id="setDetailName"></h2>
+      <p id="setDetailMeta" class="muted"></p>
+
+      <div class="set-progress-hero">
+        <div>
+          <span>Complete</span>
+          <strong id="setDetailPercent">0%</strong>
+        </div>
+        <div>
+          <span>Owned</span>
+          <strong id="setDetailOwned">0 / 0</strong>
+        </div>
+      </div>
+
+      <div class="set-progress-track">
+        <div id="setDetailProgressBar" class="set-progress-bar"></div>
+      </div>
+
+      <section class="set-detail-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow accent-text">Missing cards</p>
+            <h3 id="missingCardsHeading">0 missing</h3>
+          </div>
+          <button id="addMissingCardButton" class="button" type="button">Add missing card</button>
+        </div>
+        <div id="missingNumberGrid" class="missing-number-grid"></div>
+        <p id="setCompleteMessage" class="set-complete-message hidden">Set complete!</p>
+      </section>
+
+      <section class="set-detail-section">
+        <p class="eyebrow accent-text">Owned numbers</p>
+        <div id="ownedNumberGrid" class="missing-number-grid owned-grid"></div>
+      </section>
+
+      <div class="detail-actions">
+        <button id="editSetGoalButton" class="button button-secondary" type="button">Edit goal</button>
+        <button id="deleteSetGoalButton" class="danger-button" type="button">Delete goal</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="boxScoreDialog" class="card-dialog box-score-dialog">
+    <button id="boxScoreClose" class="dialog-close" type="button" aria-label="Close box score">×</button>
+    <h3 id="boxScoreTitle">Box score</h3>
+    <div id="boxScoreBody" class="box-score-body"></div>
+    <a id="boxScoreEspnLink" class="button button-secondary" href="#" target="_blank" rel="noopener noreferrer">View full game on ESPN</a>
+  </dialog>
+
+  <dialog id="cardDialog" class="card-dialog">
+    <button id="closeDialogButton" class="dialog-close" type="button" aria-label="Close card details">×</button>
+
+    <div class="detail-layout">
+      <section class="detail-media">
+        <div class="detail-photo-frame">
+          <img id="detailPhoto" class="detail-photo hidden" alt="">
+          <div id="detailPhotoPlaceholder" class="detail-photo-placeholder">No photo available</div>
+        </div>
+
+        <div class="detail-photo-controls">
+          <button id="showFrontButton" class="filter-chip active" type="button">Front</button>
+          <button id="showBackButton" class="filter-chip" type="button">Back</button>
+        </div>
+      </section>
+
+      <section class="detail-content">
+        <p id="detailMeta" class="card-meta"></p>
+        <h2 id="detailPlayer"></h2>
+        <p id="detailSet" class="detail-set"></p>
+        <div id="detailBadges" class="detail-badges"></div>
+
+        <div class="detail-value-block">
+          <span>Estimated value</span>
+          <strong id="detailValue">$0.00</strong>
+        </div>
+
+        <section class="pricing-panel">
+          <div class="pricing-heading">
+            <div>
+              <p class="eyebrow accent-text">Pricing research</p>
+              <h3>Check comparable cards</h3>
+            </div>
+            <span id="priceResearchDate" class="research-date">Never checked</span>
+          </div>
+
+          <label>Generated search
+            <div class="copy-field">
+              <input id="pricingSearchText" type="text" readonly>
+              <button id="copyPricingSearchButton" class="button button-secondary" type="button">Copy</button>
+            </div>
+          </label>
+
+          <div class="pricing-links">
+            <a id="ebaySoldLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              eBay sold
+            </a>
+            <a id="ebayActiveLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              eBay active
+            </a>
+            <a id="sportsCardsProLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              SportsCardsPro
+            </a>
+            <a id="googlePricingLink" class="pricing-link" href="#" target="_blank" rel="noopener noreferrer">
+              Web search
+            </a>
+            <a id="psaCertLink" class="pricing-link hidden" href="https://www.psacard.com/cert" target="_blank" rel="noopener noreferrer">
+              Verify on PSA
+            </a>
+          </div>
+
+          <form id="pricingUpdateForm" class="pricing-update-form">
+            <label>Updated estimated value
+              <input id="pricingValueInput" type="number" min="0" step="0.01" inputmode="decimal">
+            </label>
+
+            <label>Research source
+              <select id="pricingSourceInput">
+                <option value="">Select source</option>
+                <option value="eBay sold">eBay sold</option>
+                <option value="SportsCardsPro">SportsCardsPro</option>
+                <option value="Card show">Card show</option>
+                <option value="Local shop">Local shop</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label class="wide">Pricing notes
+              <textarea id="pricingNotesInput" rows="2" maxlength="500" placeholder="Example: Last 5 raw sales ranged from $18 to $24."></textarea>
+            </label>
+
+            <button id="savePricingButton" class="button wide" type="submit">Save pricing research</button>
+          </form>
+
+          <p id="pricingMessage" class="message" aria-live="polite"></p>
+        </section>
+
+        <dl class="detail-list">
+          <div><dt>Sport</dt><dd id="detailSport"></dd></div>
+          <div><dt>Status</dt><dd id="detailStatus"></dd></div>
+          <div><dt>Wishlist priority</dt><dd id="detailWishlistPriority"></dd></div>
+          <div><dt>Target price</dt><dd id="detailWishlistTarget"></dd></div>
+          <div><dt>Storage</dt><dd id="detailLocation"></dd></div>
+          <div><dt>Parallel</dt><dd id="detailParallel"></dd></div>
+          <div><dt>Quantity</dt><dd id="detailQuantity"></dd></div>
+          <div><dt>Purchase</dt><dd id="detailPurchase"></dd></div>
+          <div><dt>Price research</dt><dd id="detailPriceResearch"></dd></div>
+          <div><dt>Notes</dt><dd id="detailNotes"></dd></div>
+        </dl>
+
+        <div id="activeDetailActions" class="detail-actions">
+          <button id="detailEditButton" class="button" type="button">Edit card</button>
+          <button id="detailDeleteButton" class="danger-button" type="button">Move to trash</button>
+        </div>
+
+        <div id="trashDetailActions" class="detail-actions hidden">
+          <button id="detailRestoreButton" class="button" type="button">Restore card</button>
+          <button id="detailPermanentDeleteButton" class="danger-button" type="button">Delete permanently</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <template id="cardTemplate">
+    <article class="collection-card" tabindex="0" role="button" aria-label="Open card details">
+      <div class="card-photo-wrap">
+        <img class="card-photo hidden" alt="">
+        <div class="card-photo-placeholder">No front photo</div>
+      </div>
+
+      <div class="collection-card__body">
+        <div class="collection-card__heading">
+          <div>
+            <p class="card-meta"></p>
+            <h3 class="card-player"></h3>
+          </div>
+          <span class="card-value"></span>
+        </div>
+        <p class="card-details"></p>
+        <p class="card-location muted"></p>
+        <div class="card-tags">
+          <span class="badge card-sport"></span>
+          <span class="badge card-status"></span>
+        </div>
+        <div class="collector-badges"></div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="./js/app.js?v=28"></script>
+  <script type="module" src="./js/cardsight-diagnostics.js?v=28"></script>
+  <script type="module" src="./js/sports-feed.js?v=28"></script>
+  <script type="module" src="./js/music-feed.js?v=28"></script>
+  <script type="module" src="./js/hobby-news.js?v=28"></script>
+  <script type="module" src="./js/video-feed.js?v=28"></script>
+  <script type="module" src="./js/spotlight.js?v=28"></script>
+</body>
+</html>

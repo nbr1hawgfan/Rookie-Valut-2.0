@@ -1,96 +1,52 @@
-// Rookie Vault - Card hobby news panel
-// Real RSS feeds from the sports card press. Browsers block a static site
-// from fetching another site's raw RSS directly (no CORS on most RSS
-// feeds), so this goes through rss2json.com's free relay. That relay is a
-// third-party dependency - if it ever goes away, this panel needs a new
-// relay swapped into FEEDS below, nothing else changes.
+# Rookie Vault - Small Wins Update (v28)
 
-const RELAY = "https://api.rss2json.com/v1/api.json?rss_url=";
+One small addition: an Xbox gamertag quick-link in the Spotlight panel.
+No Supabase migration needed.
 
-const FEEDS = [
-  { url: "https://www.cardboardconnection.com/feed", label: "Cardboard Connection" },
-  { url: "https://www.beckett.com/news/feed", label: "Beckett" }
-];
+**Everything in this bundle is a ready-to-extract, drop-in replacement.**
 
-const elements = {
-  panel: document.querySelector("#hobbyNewsPanel"),
-  list: document.querySelector("#hobbyNewsList"),
-  message: document.querySelector("#hobbyNewsMessage"),
-  refreshButton: document.querySelector("#refreshHobbyNewsButton")
-};
+## Files in this bundle (replace all of these)
 
-export function initHobbyNews() {
-  if (!elements.panel) return;
+- `index.html` — Xbox gamertag field + profile link added to Spotlight;
+  version tags bumped to v28
+- `js/spotlight.js` — stores the gamertag on-device, builds the link
+- `css/worlds.css` — small style for the new inline row
+- Everything else — unchanged this round, included for completeness
 
-  elements.refreshButton?.addEventListener("click", loadHobbyNews);
-  loadHobbyNews();
-}
+Keep as-is (not in this bundle): `js/config.js`
 
-async function loadHobbyNews() {
-  elements.message.textContent = "Loading hobby news...";
-  elements.list.replaceChildren();
+## Xbox: quick link, not a live panel
 
-  const results = await Promise.allSettled(
-    FEEDS.map(feed => fetchFeed(feed))
-  );
+You picked the zero-setup option, so here's what this actually is: Brenton
+types his gamertag once (saved on-device, same pattern as everything
+else), and it builds a link to his public profile on xboxgamertag.com — a
+real, established Xbox profile lookup site, not something I made up. It
+shows gamerscore, recent games, and achievements if his profile is public.
 
-  const items = results
-    .filter(result => result.status === "fulfilled")
-    .flatMap(result => result.value);
+**What this isn't:** a live gamerscore/recently-played widget inside the
+app. That's genuinely possible — there's a real, currently-active
+third-party service (OpenXBL / xbl.io) that a lot of hobby Xbox apps use,
+personal API key, same effort tier as the CardSight key you two already
+set up. I looked into it and it's legitimate, just tabled for now since
+you picked the simple version. Say the word whenever you want to revisit
+it — filtered to just his sports titles (Madden, NBA 2K, MLB The Show,
+etc.) it'd fit right in next to the sports ticker and card news.
 
-  const failedCount = results.filter(result => result.status === "rejected").length;
+One honest note on the link itself: Microsoft's own official public
+profile URL format has changed more than once over the years and I
+couldn't verify a current one I'd trust to just work, so I used the
+third-party lookup site instead — confirmed the URL pattern actually
+resolves before shipping it, same as every other link/ID in this project.
 
-  if (!items.length) {
-    elements.message.textContent =
-      "Couldn't load hobby news right now (the relay service may be down). Try again shortly.";
-    return;
-  }
+## Before you commit
 
-  items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+1. Type a gamertag into the new field on Home's Spotlight panel and
+   confirm the link updates to that gamertag's profile.
+2. Leave it blank and confirm the link still works (falls back to the
+   general lookup page rather than a broken link).
+3. Everything else — unchanged this round, no need to re-test unless
+   you want to.
 
-  renderNews(items.slice(0, 8));
+## Suggested commit
 
-  elements.message.textContent = failedCount
-    ? `Showing what loaded (${failedCount} source${failedCount === 1 ? "" : "s"} didn't respond).`
-    : "";
-}
-
-async function fetchFeed(feed) {
-  const response = await fetch(`${RELAY}${encodeURIComponent(feed.url)}`);
-  if (!response.ok) throw new Error(`Relay failed for ${feed.label}`);
-
-  const data = await response.json();
-  if (data.status !== "ok" || !Array.isArray(data.items)) {
-    throw new Error(`Feed parse failed for ${feed.label}`);
-  }
-
-  return data.items.map(item => ({
-    title: item.title,
-    link: item.link,
-    pubDate: item.pubDate,
-    source: feed.label
-  }));
-}
-
-function renderNews(items) {
-  elements.list.replaceChildren();
-
-  for (const item of items) {
-    const anchor = document.createElement("a");
-    anchor.className = "sports-feed-headline";
-    anchor.href = item.link || "#";
-    anchor.target = "_blank";
-    anchor.rel = "noopener";
-    anchor.innerHTML = `
-      <span class="sports-feed-league">${escapeHtml(item.source)}</span>
-      <span>${escapeHtml(item.title)}</span>
-    `;
-    elements.list.append(anchor);
-  }
-}
-
-function escapeHtml(value) {
-  const div = document.createElement("div");
-  div.textContent = value ?? "";
-  return div.innerHTML;
-}
+`Add Xbox gamertag quick-link to Spotlight panel`

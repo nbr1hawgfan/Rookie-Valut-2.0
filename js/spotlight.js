@@ -4,6 +4,7 @@
 // Milestones are real thresholds crossed in actual data, shown once each.
 
 const MILESTONES_SEEN_KEY = "rookie-vault-milestones-seen";
+const XBOX_GAMERTAG_KEY = "rookie-vault-xbox-gamertag";
 
 const COUNT_MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
 const VALUE_MILESTONES = [500, 1000, 2500, 5000, 10000, 25000, 50000];
@@ -14,7 +15,9 @@ const elements = {
   bannerText: document.querySelector("#milestoneBannerText"),
   bannerDismiss: document.querySelector("#milestoneBannerDismiss"),
   card: document.querySelector("#spotlightCard"),
-  empty: document.querySelector("#spotlightEmpty")
+  empty: document.querySelector("#spotlightEmpty"),
+  xboxInput: document.querySelector("#xboxGamertagInput"),
+  xboxLink: document.querySelector("#xboxProfileLink")
 };
 
 export function initSpotlight() {
@@ -24,8 +27,35 @@ export function initSpotlight() {
     elements.banner.classList.add("hidden");
   });
 
+  initXboxLink();
+
   render();
   window.addEventListener("rookie-vault-ledger-update", render);
+}
+
+function initXboxLink() {
+  if (!elements.xboxInput || !elements.xboxLink) return;
+
+  const saved = localStorage.getItem(XBOX_GAMERTAG_KEY) || "";
+  elements.xboxInput.value = saved;
+  updateXboxLink(saved);
+
+  elements.xboxInput.addEventListener("change", () => {
+    const gamertag = elements.xboxInput.value.trim();
+    localStorage.setItem(XBOX_GAMERTAG_KEY, gamertag);
+    updateXboxLink(gamertag);
+  });
+}
+
+function updateXboxLink(gamertag) {
+  if (!gamertag) {
+    elements.xboxLink.href = "https://xboxgamertag.com/";
+    elements.xboxLink.textContent = "Xbox profile lookup";
+    return;
+  }
+
+  elements.xboxLink.href = `https://xboxgamertag.com/search/${encodeURIComponent(gamertag)}`;
+  elements.xboxLink.textContent = `${gamertag}'s Xbox profile`;
 }
 
 function render() {
